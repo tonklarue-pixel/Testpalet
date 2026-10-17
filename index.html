@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>3D Warehouse Management (Custom Modal)</title>
+    <title>3D Warehouse Management (Realistic Pallet Edition)</title>
     
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -242,7 +242,7 @@
 
         const PALLET_WIDTH = 3.6;
         const PALLET_LENGTH = 3.6;
-        const PALLET_HEIGHT = 0.4;
+        const PALLET_HEIGHT = 0.45;
         const BOX_WIDTH = 1.6;
         const BOX_LENGTH = 1.6;
         const BOX_HEIGHT = 1.2;
@@ -262,7 +262,6 @@
             0x3b82f6, 0x10b981, 0xf59e0b, 0x8b5cf6, 0xec4899, 0x06b6d4
         ];
 
-        // Custom Modal Prompt Handler
         function showCustomPrompt(title, desc, defaultValue, callback) {
             const modal = document.getElementById('custom-modal');
             const modalBox = document.getElementById('modal-box');
@@ -412,11 +411,13 @@
             raycaster = new THREE.Raycaster();
             mouse = new THREE.Vector2();
 
-            const ambientLight = new THREE.AmbientLight(0xffffff, 0.9);
-            scene.add(ambientLight);
+            // Realistic Lighting Setup
+            const hemiLight = new THREE.HemisphereLight(0xffffff, 0x1e293b, 0.85);
+            hemiLight.position.set(0, 50, 0);
+            scene.add(hemiLight);
 
-            const dirLight = new THREE.DirectionalLight(0xffffff, 0.6);
-            dirLight.position.set(15, 25, 15);
+            const dirLight = new THREE.DirectionalLight(0xffffff, 0.75);
+            dirLight.position.set(20, 40, 20);
             scene.add(dirLight);
 
             const gridHelper = new THREE.GridHelper(60, 30, 0x38bdf8, 0x1e293b);
@@ -480,7 +481,7 @@
                 const posZ = row * SPACING_Z;
 
                 const palletMesh = createPalletMesh(PALLET_WIDTH, PALLET_HEIGHT, PALLET_LENGTH);
-                palletMesh.position.set(posX, PALLET_HEIGHT / 2, posZ);
+                palletMesh.position.set(posX, 0, posZ);
                 pallet3DGroup.add(palletMesh);
 
                 const slotCounts = [0, 0, 0, 0];
@@ -515,24 +516,58 @@
             });
         }
 
+        // Realistic Pallet Model Construction
         function createPalletMesh(w, h, l) {
             const group = new THREE.Group();
-            const woodMat = new THREE.MeshLambertMaterial({ color: 0xc2410c });
+            
+            const woodMat = new THREE.MeshLambertMaterial({ color: 0xd97706 }); // Pine wood color
+            const blockMat = new THREE.MeshLambertMaterial({ color: 0xb45309 }); // Darker wood blocks
 
-            const plankCount = 5;
-            const plankWidth = w / plankCount - 0.05;
-            for(let i=0; i<plankCount; i++) {
-                const plankGeo = new THREE.BoxGeometry(plankWidth, 0.08, l);
+            const topPlankThickness = 0.08;
+            const bottomPlankThickness = 0.06;
+            const blockHeight = h - topPlankThickness - bottomPlankThickness;
+
+            // 1. Top Deck Planks (5 Boards)
+            const topPlankCount = 5;
+            const topPlankWidth = (w - 0.2) / topPlankCount;
+            for (let i = 0; i < topPlankCount; i++) {
+                const plankGeo = new THREE.BoxGeometry(topPlankWidth - 0.04, topPlankThickness, l);
                 const plank = new THREE.Mesh(plankGeo, woodMat);
-                plank.position.x = -w/2 + plankWidth/2 + i * (plankWidth + 0.05);
-                plank.position.y = h/2 - 0.04;
+                plank.position.x = -w / 2 + topPlankWidth / 2 + i * topPlankWidth;
+                plank.position.y = h - topPlankThickness / 2;
                 group.add(plank);
             }
 
-            const blockGeo = new THREE.BoxGeometry(w, h - 0.08, l * 0.2);
-            const block = new THREE.Mesh(blockGeo, woodMat);
-            block.position.y = -0.04;
-            group.add(block);
+            // 2. Center & Side Support Blocks (9 Blocks)
+            const blockSize = 0.35;
+            const xPositions = [-w / 2 + blockSize / 2 + 0.1, 0, w / 2 - blockSize / 2 - 0.1];
+            const zPositions = [-l / 2 + blockSize / 2 + 0.1, 0, l / 2 - blockSize / 2 - 0.1];
+
+            xPositions.forEach(x => {
+                zPositions.forEach(z => {
+                    const blockGeo = new THREE.BoxGeometry(blockSize, blockHeight, blockSize);
+                    const block = new THREE.Mesh(blockGeo, blockMat);
+                    block.position.set(x, bottomPlankThickness + blockHeight / 2, z);
+                    group.add(block);
+                });
+            });
+
+            // 3. Bottom Base Planks (3 Boards)
+            const bottomPlankWidth = 0.45;
+            xPositions.forEach(x => {
+                const bPlankGeo = new THREE.BoxGeometry(bottomPlankWidth, bottomPlankThickness, l);
+                const bPlank = new THREE.Mesh(bPlankGeo, woodMat);
+                bPlank.position.set(x, bottomPlankThickness / 2, 0);
+                group.add(bPlank);
+            });
+
+            // 4. Ground Contact Shadow Base
+            const shadowGeo = new THREE.PlaneGeometry(w + 0.2, l + 0.2);
+            const shadowMat = new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.2 });
+            const shadow = new THREE.Mesh(shadowGeo, shadowMat);
+            shadow.rotation.x = -Math.PI / 2;
+            shadow.position.y = 0.005;
+            group.add(shadow);
 
             return group;
         }
