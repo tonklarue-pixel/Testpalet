@@ -1,849 +1,1116 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="th">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>3D Pallet & Box Manager - Search Enabled</title>
-  
-  <!-- Tailwind CSS CDN -->
-  <script src="https://cdn.tailwindcss.com"></script>
-  <!-- Lucide Icons -->
-  <script src="https://unpkg.com/lucide@latest"></script>
-  <!-- Three.js & OrbitControls -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
-  <!-- Google Fonts Inter -->
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-
-  <style>
-    body {
-      font-family: 'Inter', sans-serif;
-      overflow: hidden;
-      user-select: none;
-    }
-    /* Custom Scrollbar for Sidebar */
-    ::-webkit-scrollbar {
-      width: 6px;
-    }
-    ::-webkit-scrollbar-track {
-      background: rgba(15, 23, 42, 0.6);
-    }
-    ::-webkit-scrollbar-thumb {
-      background: rgba(51, 65, 85, 0.8);
-      border-radius: 4px;
-    }
-    ::-webkit-scrollbar-thumb:hover {
-      background: rgba(71, 85, 105, 1);
-    }
-  </style>
-</head>
-<body class="bg-slate-950 text-slate-100 h-screen w-screen flex overflow-hidden">
-
-  <!-- Status Indicator Badge -->
-  <div class="absolute top-4 left-4 z-20 flex items-center gap-2 bg-slate-900/90 backdrop-blur-md px-3 py-1.5 rounded-full border border-slate-700/60 shadow-lg text-xs font-semibold">
-    <div id="statusDot" class="w-2.5 h-2.5 rounded-full bg-amber-500 animate-pulse"></div>
-    <span id="statusText" class="text-slate-300">INITIALIZING...</span>
-  </div>
-
-  <!-- Main Canvas Container for 3D Viewport -->
-  <div id="canvas-container" class="relative flex-1 h-full w-full bg-slate-950 cursor-grab active:cursor-grabbing">
-    <!-- Top-Right Search Overlay Quick Info -->
-    <div id="searchMatchBanner" class="hidden absolute top-4 left-1/2 -translate-x-1/2 z-20 bg-emerald-500/20 backdrop-blur-md border border-emerald-500/50 text-emerald-300 px-4 py-2 rounded-xl shadow-2xl flex items-center gap-2 text-sm font-medium animate-bounce">
-      <i data-lucide="search-check" class="w-5 h-5 text-emerald-400"></i>
-      <span>พบกล่องที่ตรงกับคำค้นหา <strong id="matchCount" class="text-emerald-200 underline font-bold text-base">0</strong> กล่อง</span>
-    </div>
-  </div>
-
-  <!-- Sidebar Overlay Toggle for Mobile -->
-  <button id="toggleSidebarBtn" class="lg:hidden absolute bottom-5 right-5 z-30 p-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-full shadow-2xl transition-all">
-    <i data-lucide="menu" class="w-6 h-6"></i>
-  </button>
-
-  <!-- Control Sidebar Panel -->
-  <aside id="sidebar" class="fixed lg:relative top-0 right-0 h-full w-80 md:w-96 bg-slate-900/95 backdrop-blur-xl border-l border-slate-800 z-20 flex flex-col transition-transform duration-300 translate-x-full lg:translate-x-0 shadow-2xl">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ระบบบริหารจัดการพาเลทและลังเอกสาร 3 มิติ (3D Pallet & Box Stacker)</title>
     
-    <!-- Header & Search Box Section -->
-    <div class="p-5 border-b border-slate-800 space-y-4">
-      <div class="flex items-center justify-between">
-        <div class="flex items-center gap-2">
-          <div class="p-2 bg-indigo-600/20 rounded-lg text-indigo-400 border border-indigo-500/30">
-            <i data-lucide="boxes" class="w-6 h-6"></i>
-          </div>
-          <div>
-            <h1 class="font-bold text-slate-100 text-lg leading-tight">Pallet & Box 3D</h1>
-            <p class="text-xs text-slate-400">ระบบจัดการตำแหน่งกล่องบนพาเลท</p>
-          </div>
-        </div>
-        <button id="closeSidebarBtn" class="lg:hidden text-slate-400 hover:text-white">
-          <i data-lucide="x" class="w-6 h-6"></i>
-        </button>
-      </div>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Google Font (Kanit) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 
-      <!-- Real-time Search Box Input -->
-      <div class="relative">
-        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
-          <i data-lucide="search" class="w-4 h-4"></i>
-        </div>
-        <input 
-          type="text" 
-          id="searchInput" 
-          placeholder="ค้นหาชื่อกล่อง / แฟ้ม..." 
-          class="w-full pl-9 pr-8 py-2 bg-slate-800/90 border border-slate-700/80 rounded-xl text-sm text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-amber-500/50 focus:border-amber-500 transition-all"
-        />
-        <button id="clearSearchBtn" class="hidden absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-white">
-          <i data-lucide="x-circle" class="w-4 h-4"></i>
-        </button>
-      </div>
-    </div>
+    <!-- Three.js and OrbitControls -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    
+    <!-- Tween.js for Smooth Animations -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tween.js/18.6.4/tween.umd.js"></script>
 
-    <!-- Actions & Pallets List Scrollable Area -->
-    <div class="flex-1 overflow-y-auto p-5 space-y-5">
-      
-      <!-- Primary Actions -->
-      <div class="grid grid-cols-2 gap-3">
-        <button id="addPalletBtn" class="flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-500 text-white py-2.5 px-3 rounded-xl font-medium text-sm transition-all shadow-md active:scale-95">
-          <i data-lucide="plus-square" class="w-4 h-4"></i>
-          เพิ่มพาเลท
-        </button>
-        <button id="resetViewBtn" class="flex items-center justify-center gap-2 bg-slate-800 hover:bg-slate-700 text-slate-200 py-2.5 px-3 rounded-xl font-medium text-sm transition-all border border-slate-700 active:scale-95">
-          <i data-lucide="rotate-ccw" class="w-4 h-4"></i>
-          รีเซ็ตมุมมอง
-        </button>
-      </div>
-
-      <!-- Pallets List Tree View -->
-      <div class="space-y-3">
-        <div class="flex items-center justify-between text-xs font-semibold text-slate-400 uppercase tracking-wider">
-          <span>รายการพาเลท (<span id="palletCount">0</span>)</span>
-          <span class="text-[10px] text-slate-500">คลิกเปิดเพื่อดูและเพิ่มกล่อง</span>
-        </div>
-        <div id="palletsContainer" class="space-y-3">
-          <!-- Dynamic Pallet Accordion Cards generated via JS -->
-        </div>
-      </div>
-    </div>
-
-    <!-- Footer: Cloud Sync & Backup Buttons -->
-    <div class="p-4 border-t border-slate-800 bg-slate-950/50 space-y-2">
-      <div class="grid grid-cols-2 gap-2">
-        <button id="exportBtn" class="flex items-center justify-center gap-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 py-2 rounded-lg text-xs font-medium border border-slate-700 transition">
-          <i data-lucide="download" class="w-3.5 h-3.5"></i> Export JSON
-        </button>
-        <button id="importBtn" class="flex items-center justify-center gap-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 py-2 rounded-lg text-xs font-medium border border-slate-700 transition">
-          <i data-lucide="upload" class="w-3.5 h-3.5"></i> Import JSON
-        </button>
-      </div>
-      <input type="file" id="importFileInput" accept=".json" class="hidden" />
-    </div>
-  </aside>
-
-  <!-- Edit Box Label Modal -->
-  <div id="editModal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
-    <div class="bg-slate-900 border border-slate-800 w-full max-w-md rounded-2xl p-6 shadow-2xl space-y-4">
-      <div class="flex justify-between items-center border-b border-slate-800 pb-3">
-        <h3 class="text-base font-semibold text-slate-100 flex items-center gap-2">
-          <i data-lucide="edit-3" class="w-4 h-4 text-amber-400"></i>
-          แก้ไขข้อความป้ายข้างกล่อง
-        </h3>
-        <button id="closeModalBtn" class="text-slate-400 hover:text-white">
-          <i data-lucide="x" class="w-5 h-5"></i>
-        </button>
-      </div>
-      <div>
-        <label class="block text-xs font-medium text-slate-400 mb-1">ข้อความที่จะติดข้างกล่อง (Label/Name)</label>
-        <input 
-          type="text" 
-          id="modalBoxLabelInput" 
-          class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500/50"
-          placeholder="พิมพ์ชื่อแฟ้มหรือรหัสกล่อง..."
-        />
-      </div>
-      <div class="flex justify-end gap-2 pt-2">
-        <button id="cancelModalBtn" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 text-sm rounded-xl font-medium">ยกเลิก</button>
-        <button id="saveModalBtn" class="px-4 py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 text-sm rounded-xl font-bold">บันทึก</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- Firebase Integration -->
-  <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-    import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-    import { getFirestore, doc, onSnapshot, setDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-
-    // App State
-    let palletsData = [];
-    let searchKeyword = "";
-    let isCloudLive = false;
-    let editingTarget = null; // { palletId, boxId }
-
-    // Firebase Config Check
-    const appId = typeof __app_id !== 'undefined' ? __app_id : 'pallet-box-manager-default';
-    let firebaseConfig = null;
-    try {
-      if (typeof __firebase_config !== 'undefined' && __firebase_config) {
-        firebaseConfig = JSON.parse(__firebase_config);
-      }
-    } catch (e) {
-      console.warn("Firebase Config parse error fallback to local storage:", e);
-    }
-
-    let db = null;
-    let auth = null;
-    let docRef = null;
-
-    // --- THREE.JS SCENE SETUP ---
-    const container = document.getElementById('canvas-container');
-    const scene = new THREE.Scene();
-    scene.background = new THREE.Color(0x0f172a);
-    scene.fog = new THREE.FogExp2(0x0f172a, 0.015);
-
-    // Camera
-    const camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 1000);
-    camera.position.set(12, 12, 16);
-
-    // Renderer
-    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-    renderer.setSize(container.clientWidth, container.clientHeight);
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-    renderer.shadowMap.enabled = true;
-    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-    container.appendChild(renderer.domElement);
-
-    // OrbitControls
-    const controls = new THREE.OrbitControls(camera, renderer.domElement);
-    controls.enableDamping = true;
-    controls.dampingFactor = 0.05;
-    controls.maxPolarAngle = Math.PI / 2 + 0.05;
-    controls.minDistance = 3;
-    controls.maxDistance = 60;
-    controls.target.set(3, 0, 0);
-
-    // Lighting
-    const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
-    scene.add(ambientLight);
-
-    const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
-    dirLight.position.set(20, 30, 20);
-    dirLight.castShadow = true;
-    dirLight.shadow.mapSize.width = 2048;
-    dirLight.shadow.mapSize.height = 2048;
-    dirLight.shadow.bias = -0.0001;
-    scene.add(dirLight);
-
-    const fillLight = new THREE.DirectionalLight(0x93c5fd, 0.3);
-    fillLight.position.set(-20, 15, -20);
-    scene.add(fillLight);
-
-    // Floor Grid
-    const gridHelper = new THREE.GridHelper(60, 60, 0x334155, 0x1e293b);
-    gridHelper.position.y = -0.01;
-    scene.add(gridHelper);
-
-    // Groups holding 3D meshes
-    const palletsGroup = new THREE.Group();
-    scene.add(palletsGroup);
-
-    // Map for high-efficiency box mesh tracking during animation/highlighting
-    let boxMeshRegistry = [];
-
-    // Dimensions
-    const PALLET_W = 2.4, PALLET_L = 2.4, PALLET_H = 0.25;
-    const BOX_W = 1.1, BOX_L = 1.1, BOX_H = 0.8;
-    const GRID_COLS = 3; // 3 Columns arrangement
-
-    // --- CANVAS TEXTURE GENERATOR FOR BOX LABELS ---
-    function createBoxLabelTexture(text) {
-      const canvas = document.createElement('canvas');
-      canvas.width = 512;
-      canvas.height = 256;
-      const ctx = canvas.getContext('2d');
-
-      // Cardboard-like background
-      ctx.fillStyle = '#c29b68';
-      ctx.fillRect(0, 0, 512, 256);
-
-      // White Label Sticker area
-      ctx.fillStyle = '#ffffff';
-      ctx.fillRect(20, 20, 472, 216);
-
-      // Border line
-      ctx.strokeStyle = '#e2e8f0';
-      ctx.lineWidth = 6;
-      ctx.strokeRect(26, 26, 460, 204);
-
-      // Label Header / Icon accent
-      ctx.fillStyle = '#4f46e5';
-      ctx.fillRect(26, 26, 460, 36);
-
-      ctx.fillStyle = '#ffffff';
-      ctx.font = 'bold 22px Inter, sans-serif';
-      ctx.textAlign = 'center';
-      ctx.fillText('FILE ARCHIVE BOX', 256, 52);
-
-      // Main Text
-      ctx.fillStyle = '#0f172a';
-      ctx.font = 'bold 36px Inter, sans-serif';
-      
-      // Auto-wrap text if long
-      const maxTextWidth = 430;
-      let words = text.split(' ');
-      let line = '';
-      let y = 130;
-
-      for (let n = 0; n < words.length; n++) {
-        let testLine = line + words[n] + ' ';
-        let metrics = ctx.measureText(testLine);
-        if (metrics.width > maxTextWidth && n > 0) {
-          ctx.fillText(line, 256, y);
-          line = words[n] + ' ';
-          y += 42;
-        } else {
-          line = testLine;
+    <style>
+        body {
+            font-family: 'Kanit', sans-serif;
+            background-color: #0f172a;
+            color: #f8fafc;
+            overflow: hidden;
         }
-      }
-      ctx.fillText(line, 256, y);
-
-      const texture = new THREE.CanvasTexture(canvas);
-      texture.needsUpdate = true;
-      return texture;
-    }
-
-    // --- 3D MESH GENERATORS ---
-    // Pallet Mesh Generator
-    function createPalletMesh() {
-      const group = new THREE.Group();
-      const woodMat = new THREE.MeshStandardMaterial({ color: 0x855e42, roughness: 0.8 });
-
-      // Top planks
-      for (let i = -1; i <= 1; i += 0.5) {
-        const plank = new THREE.Mesh(new THREE.BoxGeometry(PALLET_W, 0.04, 0.35), woodMat);
-        plank.position.set(0, PALLET_H - 0.02, i * 0.75);
-        plank.castShadow = true;
-        plank.receiveShadow = true;
-        group.add(plank);
-      }
-
-      // Support Blocks
-      for (let x of [-1, 0, 1]) {
-        for (let z of [-1, 0, 1]) {
-          const block = new THREE.Mesh(new THREE.BoxGeometry(0.3, PALLET_H - 0.08, 0.3), woodMat);
-          block.position.set(x * 0.95, (PALLET_H - 0.08)/2 + 0.04, z * 0.95);
-          block.castShadow = true;
-          block.receiveShadow = true;
-          group.add(block);
+        
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
         }
-      }
+        ::-webkit-scrollbar-track {
+            background: #1e293b;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #475569;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #64748b;
+        }
 
-      // Bottom Planks
-      for (let z of [-0.95, 0, 0.95]) {
-        const bottomPlank = new THREE.Mesh(new THREE.BoxGeometry(PALLET_W, 0.04, 0.3), woodMat);
-        bottomPlank.position.set(0, 0.02, z);
-        bottomPlank.castShadow = true;
-        bottomPlank.receiveShadow = true;
-        group.add(bottomPlank);
-      }
+        .glass-panel {
+            background: rgba(30, 41, 59, 0.85);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
 
-      return group;
-    }
+        .pulsing-card {
+            animation: pulse-border 2s infinite;
+        }
 
-    // Box Mesh Generator
-    function createBoxMesh(boxData, isHighlighted) {
-      const boxGeo = new THREE.BoxGeometry(BOX_W, BOX_H, BOX_L);
-      const labelTexture = createBoxLabelTexture(boxData.label);
+        @keyframes pulse-border {
+            0% { border-color: rgba(234, 179, 8, 0.4); }
+            50% { border-color: rgba(234, 179, 8, 1); box-shadow: 0 0 15px rgba(234, 179, 8, 0.5); }
+            100% { border-color: rgba(234, 179, 8, 0.4); }
+        }
+    </style>
+</head>
+<body class="h-screen w-screen flex flex-col md:flex-row select-none">
 
-      // Cardboard side materials
-      const cardboardMat = new THREE.MeshStandardMaterial({ color: 0xd4a373, roughness: 0.7 });
-      
-      // Front and Back sides with Canvas Text Texture
-      const labelMat = new THREE.MeshStandardMaterial({ map: labelTexture, roughness: 0.5 });
+    <!-- Canvas Container (3D Scene) -->
+    <div id="canvas-container" class="relative flex-1 h-full w-full bg-slate-950 overflow-hidden">
+        
+        <!-- Status & Search Bar (Top Floating Bar) -->
+        <div class="absolute top-4 left-4 right-4 md:right-auto z-10 flex flex-wrap gap-3 items-center">
+            
+            <!-- System Mode Indicator -->
+            <div id="connection-status" class="glass-panel px-3 py-1.5 rounded-xl flex items-center gap-2 text-xs font-semibold shadow-lg">
+                <span class="w-2.5 h-2.5 rounded-full bg-amber-500 animate-pulse" id="status-dot"></span>
+                <span id="status-text" class="text-amber-400">กำลังตรวจสอบสถานะ...</span>
+            </div>
 
-      // Highlight Glowing Material override
-      const highlightMat = new THREE.MeshStandardMaterial({
-        color: 0xfacc15, // Neon Gold
-        emissive: 0xeab308,
-        emissiveIntensity: 0.6,
-        roughness: 0.2
-      });
-
-      const highlightLabelMat = new THREE.MeshStandardMaterial({
-        map: labelTexture,
-        color: 0xfef08a,
-        emissive: 0xca8a04,
-        emissiveIntensity: 0.5
-      });
-
-      let materials;
-      if (isHighlighted) {
-        materials = [
-          highlightMat, highlightMat,
-          highlightMat, highlightMat,
-          highlightLabelMat, highlightLabelMat // Front/Back
-        ];
-      } else {
-        materials = [
-          cardboardMat, cardboardMat,
-          cardboardMat, cardboardMat,
-          labelMat, labelMat
-        ];
-      }
-
-      const mesh = new THREE.Mesh(boxGeo, materials);
-      mesh.castShadow = true;
-      mesh.receiveShadow = true;
-
-      // Subtle Box Edge Lines
-      const edges = new THREE.EdgesGeometry(boxGeo);
-      const lineMat = new THREE.LineBasicMaterial({ 
-        color: isHighlighted ? 0xfef08a : 0x78350f, 
-        linewidth: 1.5 
-      });
-      const wireframe = new THREE.LineSegments(edges, lineMat);
-      mesh.add(wireframe);
-
-      return mesh;
-    }
-
-    // Render & Rebuild Entire 3D Scene based on State
-    function render3DScene() {
-      // Clear previous pallet meshes
-      while (palletsGroup.children.length > 0) {
-        const child = palletsGroup.children[0];
-        palletsGroup.remove(child);
-      }
-      boxMeshRegistry = [];
-
-      let totalMatchedBoxes = 0;
-      const normalizedKeyword = searchKeyword.trim().toLowerCase();
-
-      palletsData.forEach((pallet, pIdx) => {
-        // Calculate Grid Position (3 columns)
-        const row = Math.floor(pIdx / GRID_COLS);
-        const col = pIdx % GRID_COLS;
-        const posX = col * (PALLET_W + 1.2);
-        const posZ = row * (PALLET_L + 1.2);
-
-        // Pallet Group
-        const pGroup = new THREE.Group();
-        pGroup.position.set(posX, 0, posZ);
-
-        // Add Pallet Base Mesh
-        const palletMesh = createPalletMesh();
-        pGroup.add(palletMesh);
-
-        // Stack Boxes on Pallet
-        pallet.boxes.forEach((box, bIdx) => {
-          const isMatched = normalizedKeyword !== "" && box.label.toLowerCase().includes(normalizedKeyword);
-          if (isMatched) totalMatchedBoxes++;
-
-          const boxMesh = createBoxMesh(box, isMatched);
-          // Y calculation based on box height and stacking
-          const boxY = PALLET_H + (bIdx * BOX_H) + (BOX_H / 2);
-          boxMesh.position.set(0, boxY, 0);
-
-          pGroup.add(boxMesh);
-
-          // Register box for animation loop if highlighted
-          boxMeshRegistry.push({
-            mesh: boxMesh,
-            isMatched,
-            originalY: boxY,
-            seed: pIdx * 10 + bIdx
-          });
-        });
-
-        palletsGroup.add(pGroup);
-      });
-
-      // Update Search Match Banner
-      const matchBanner = document.getElementById('searchMatchBanner');
-      const matchCount = document.getElementById('matchCount');
-      if (normalizedKeyword !== "") {
-        matchBanner.classList.remove('hidden');
-        matchCount.innerText = totalMatchedBoxes;
-      } else {
-        matchBanner.classList.add('hidden');
-      }
-    }
-
-    // --- UI RENDER & CONTROLS ---
-    function renderUI() {
-      const container = document.getElementById('palletsContainer');
-      const palletCountEl = document.getElementById('palletCount');
-      palletCountEl.innerText = palletsData.length;
-
-      container.innerHTML = '';
-
-      if (palletsData.length === 0) {
-        container.innerHTML = `
-          <div class="text-center py-8 text-slate-500 border border-dashed border-slate-800 rounded-2xl">
-            <i data-lucide="inbox" class="w-8 h-8 mx-auto mb-2 opacity-50"></i>
-            <p class="text-sm">ยังไม่มีพาเลทในระบบ</p>
-            <p class="text-xs">กดปุ่ม "เพิ่มพาเลท" ด้านบนเพื่อเริ่มจัดวาง</p>
-          </div>
-        `;
-        lucide.createIcons();
-        return;
-      }
-
-      const normalizedKeyword = searchKeyword.trim().toLowerCase();
-
-      palletsData.forEach((pallet, pIdx) => {
-        const palletCard = document.createElement('div');
-        palletCard.className = "bg-slate-800/60 border border-slate-700/60 rounded-xl overflow-hidden transition-all";
-
-        let boxesHTML = '';
-        pallet.boxes.forEach((box, bIdx) => {
-          const isMatched = normalizedKeyword !== "" && box.label.toLowerCase().includes(normalizedKeyword);
-          
-          boxesHTML += `
-            <div class="flex items-center justify-between p-2 rounded-lg ${isMatched ? 'bg-amber-500/20 border border-amber-500/50' : 'bg-slate-900/50'} text-xs gap-2">
-              <div class="flex items-center gap-2 truncate flex-1">
-                <span class="w-5 h-5 rounded-md bg-slate-800 text-slate-400 font-bold flex items-center justify-center text-[10px] shrink-0">
-                  L${bIdx + 1}
-                </span>
-                <span class="truncate font-medium ${isMatched ? 'text-amber-300 font-bold' : 'text-slate-200'}">
-                  ${escapeHTML(box.label)}
-                </span>
-              </div>
-              <div class="flex items-center gap-1 shrink-0">
-                <button onclick="window.appEditBoxLabel('${pallet.id}', '${box.id}', '${escapeHTML(box.label)}')" class="p-1 hover:bg-slate-700 text-slate-400 hover:text-amber-400 rounded transition">
-                  <i data-lucide="edit-2" class="w-3.5 h-3.5"></i>
+            <!-- Search Input -->
+            <div class="relative flex-1 sm:w-80">
+                <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm"></i>
+                <input type="text" id="search-box" placeholder="ค้นหาชื่อลัง / รหัสเอกสาร..." 
+                       class="w-full bg-slate-900/90 text-sm text-slate-100 pl-9 pr-8 py-2 rounded-xl border border-slate-700/60 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all shadow-lg placeholder:text-slate-500">
+                <button id="clear-search" class="hidden absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white">
+                    <i class="fa-solid fa-xmark text-xs"></i>
                 </button>
-                <button onclick="window.appRemoveBox('${pallet.id}', '${box.id}')" class="p-1 hover:bg-slate-700 text-slate-400 hover:text-rose-400 rounded transition">
-                  <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+            </div>
+            
+            <!-- Quick View Preset Buttons -->
+            <div class="glass-panel p-1 rounded-xl flex gap-1 shadow-lg">
+                <button onclick="setCameraView('3d')" title="มุมมอง 3 มิติอิสระ" class="px-2.5 py-1 text-xs font-medium rounded-lg hover:bg-slate-700 text-slate-300 hover:text-white transition-all">
+                    <i class="fa-solid fa-cube mr-1"></i> 3D
                 </button>
-              </div>
+                <button onclick="setCameraView('top')" title="มุมมองจากด้านบน" class="px-2.5 py-1 text-xs font-medium rounded-lg hover:bg-slate-700 text-slate-300 hover:text-white transition-all">
+                    <i class="fa-solid fa-arrows-up-down-left-right mr-1"></i> Top
+                </button>
+                <button onclick="setCameraView('front')" title="มุมมองด้านหน้า" class="px-2.5 py-1 text-xs font-medium rounded-lg hover:bg-slate-700 text-slate-300 hover:text-white transition-all">
+                    <i class="fa-solid fa-vector-square mr-1"></i> Front
+                </button>
             </div>
-          `;
-        });
+        </div>
 
-        palletCard.innerHTML = `
-          <div class="p-3 bg-slate-800 flex items-center justify-between border-b border-slate-700/50">
-            <div class="flex items-center gap-2">
-              <i data-lucide="box" class="w-4 h-4 text-indigo-400"></i>
-              <span class="font-bold text-sm text-slate-100">พาเลท #${pIdx + 1}</span>
-              <span class="text-xs text-slate-400">(${pallet.boxes.length} ลัง)</span>
+        <!-- Search Results Floating Panel -->
+        <div id="search-results-panel" class="hidden absolute top-20 left-4 z-20 w-80 max-h-80 glass-panel rounded-2xl p-3 flex-col gap-2 overflow-y-auto shadow-2xl border border-yellow-500/30">
+            <div class="flex justify-between items-center px-1 border-b border-slate-700/50 pb-2">
+                <span class="text-xs font-semibold text-yellow-400 flex items-center gap-1.5">
+                    <i class="fa-solid fa-list-check"></i> ผลการค้นหา (<span id="search-count">0</span>)
+                </span>
+                <span class="text-[10px] text-slate-400">คลิกที่รายการเพื่อเลื่อนกล้องโฟกัส</span>
             </div>
-            <div class="flex items-center gap-1">
-              <button onclick="window.appAddBox('${pallet.id}')" class="flex items-center gap-1 bg-indigo-600/30 hover:bg-indigo-600 text-indigo-300 hover:text-white px-2 py-1 rounded-lg text-xs transition border border-indigo-500/30">
-                <i data-lucide="plus" class="w-3 h-3"></i> วางกล่อง
-              </button>
-              <button onclick="window.appRemovePallet('${pallet.id}')" class="p-1 text-slate-400 hover:text-rose-400 hover:bg-slate-700/50 rounded transition">
-                <i data-lucide="trash-2" class="w-4 h-4"></i>
-              </button>
+            <div id="search-results-list" class="flex flex-col gap-1.5"></div>
+        </div>
+
+        <!-- 3D Canvas Canvas Node injects here -->
+
+        <!-- Bottom Controls Floating Bar -->
+        <div class="absolute bottom-4 left-4 right-4 md:right-auto z-10 flex gap-2">
+            <button id="btn-add-box" class="bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2.5 rounded-xl font-medium text-sm shadow-lg shadow-indigo-600/30 flex items-center gap-2 transition-all active:scale-95">
+                <i class="fa-solid fa-plus-circle"></i> เพิ่มลังใหม่
+            </button>
+            <button id="btn-add-pallet" class="bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 px-4 py-2.5 rounded-xl font-medium text-sm shadow-lg flex items-center gap-2 transition-all active:scale-95">
+                <i class="fa-solid fa-boxes-packing"></i> เพิ่มพาเลทใหม่
+            </button>
+        </div>
+    </div>
+
+    <!-- Right Sidebar (Control & Dashboard) -->
+    <div class="w-full md:w-96 h-2/5 md:h-full glass-panel flex flex-col border-t md:border-t-0 md:border-l border-slate-800 z-20">
+        
+        <!-- Header -->
+        <div class="p-4 border-b border-slate-800 flex justify-between items-center bg-slate-900/50">
+            <div>
+                <h1 class="font-bold text-lg text-slate-100 flex items-center gap-2">
+                    <i class="fa-solid fa-cubes text-indigo-400"></i> คลังลังเอกสาร 3D
+                </h1>
+                <p class="text-xs text-slate-400">การวาง 4 ลัง/ชั้น ซ้อนสูงไม่จำกัด</p>
             </div>
-          </div>
-          <div class="p-2 space-y-1.5 max-h-48 overflow-y-auto">
-            ${pallet.boxes.length === 0 ? '<p class="text-center text-xs text-slate-500 py-2">ยังไม่มีกล่องวางบนพาเลทนี้</p>' : boxesHTML}
-          </div>
-        `;
+            <div class="flex gap-1">
+                <button id="btn-export" title="ส่งออก JSON" class="p-2 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 transition-all">
+                    <i class="fa-solid fa-download text-sm"></i>
+                </button>
+                <button id="btn-import-trigger" title="นำเข้า JSON" class="p-2 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 transition-all">
+                    <i class="fa-solid fa-upload text-sm"></i>
+                </button>
+                <input type="file" id="file-import" accept=".json" class="hidden">
+            </div>
+        </div>
 
-        container.appendChild(palletCard);
-      });
+        <!-- Dashboard Stats -->
+        <div class="grid grid-cols-3 gap-2 p-4 bg-slate-900/30 border-b border-slate-800/60">
+            <div class="bg-slate-800/60 p-2.5 rounded-xl border border-slate-700/40 text-center">
+                <span class="block text-[11px] text-slate-400 font-medium">พาเลททั้งหมด</span>
+                <span id="stat-pallets" class="text-lg font-bold text-indigo-400">0</span>
+            </div>
+            <div class="bg-slate-800/60 p-2.5 rounded-xl border border-slate-700/40 text-center">
+                <span class="block text-[11px] text-slate-400 font-medium">ลังทั้งหมด</span>
+                <span id="stat-boxes" class="text-lg font-bold text-emerald-400">0</span>
+            </div>
+            <div class="bg-slate-800/60 p-2.5 rounded-xl border border-slate-700/40 text-center">
+                <span class="block text-[11px] text-slate-400 font-medium">ชั้นสูงสุด</span>
+                <span id="stat-max-layers" class="text-lg font-bold text-amber-400">0</span>
+            </div>
+        </div>
 
-      lucide.createIcons();
-    }
+        <!-- Pallet Tree view list -->
+        <div class="flex-1 overflow-y-auto p-4 space-y-3" id="pallet-list">
+            <!-- Pallet Card dynamic render -->
+        </div>
 
-    function escapeHTML(str) {
-      return str.replace(/[&<>'"]/g, 
-        tag => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[tag] || tag)
-      );
-    }
+        <!-- Firebase Settings Drawer Toggle -->
+        <div class="p-3 border-t border-slate-800 bg-slate-900/80 text-xs flex justify-between items-center text-slate-400">
+            <span>การเชื่อมต่อ Cloud Firestore</span>
+            <button id="btn-toggle-firebase-modal" class="text-indigo-400 hover:underline">
+                ตั้งค่า
+            </button>
+        </div>
+    </div>
 
-    // --- DATA STATE ACTIONS ---
-    function saveData() {
-      render3DScene();
-      renderUI();
+    <!-- Modal: Add / Edit Box -->
+    <div id="modal-box" class="hidden fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="glass-panel w-full max-w-md rounded-2xl p-6 shadow-2xl border border-slate-700 animate-in fade-in zoom-in duration-200">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-lg font-bold text-slate-100 flex items-center gap-2" id="modal-box-title">
+                    <i class="fa-solid fa-box text-indigo-400"></i> เพิ่มลังเอกสารใหม่
+                </h3>
+                <button class="btn-close-modal text-slate-400 hover:text-white">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+            <form id="form-box" class="space-y-4">
+                <input type="hidden" id="input-box-id">
+                <div>
+                    <label class="block text-xs font-medium text-slate-300 mb-1">ชื่อลัง / รหัสเอกสาร <span class="text-rose-400">*</span></label>
+                    <input type="text" id="input-box-label" required placeholder="เช่น BOX-2026-001 เอกสารบัญชี" 
+                           class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-100 focus:outline-none focus:border-indigo-500">
+                </div>
+                <div>
+                    <label class="block text-xs font-medium text-slate-300 mb-1">เลือกพาเลท <span class="text-rose-400">*</span></label>
+                    <select id="select-box-pallet" required 
+                            class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-100 focus:outline-none focus:border-indigo-500">
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs font-medium text-slate-300 mb-1">โทนสีของลังเอกสาร</label>
+                    <div class="flex gap-2" id="color-picker-container">
+                        <button type="button" data-color="#c29b38" class="w-8 h-8 rounded-full bg-[#c29b38] border-2 border-white ring-2 ring-indigo-500"></button>
+                        <button type="button" data-color="#3b82f6" class="w-8 h-8 rounded-full bg-blue-500 border-2 border-transparent"></button>
+                        <button type="button" data-color="#10b981" class="w-8 h-8 rounded-full bg-emerald-500 border-2 border-transparent"></button>
+                        <button type="button" data-color="#f59e0b" class="w-8 h-8 rounded-full bg-amber-500 border-2 border-transparent"></button>
+                        <button type="button" data-color="#ef4444" class="w-8 h-8 rounded-full bg-rose-500 border-2 border-transparent"></button>
+                        <button type="button" data-color="#8b5cf6" class="w-8 h-8 rounded-full bg-purple-500 border-2 border-transparent"></button>
+                    </div>
+                    <input type="hidden" id="input-box-color" value="#c29b38">
+                </div>
+                <div>
+                    <label class="block text-xs font-medium text-slate-300 mb-1">รายละเอียดเพิ่มเติม / หมายเหตุ</label>
+                    <textarea id="input-box-notes" rows="2" placeholder="รายละเอียดเนื้อหาภายในลัง..." 
+                              class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-100 focus:outline-none focus:border-indigo-500"></textarea>
+                </div>
+                <div class="flex justify-end gap-2 pt-2">
+                    <button type="button" class="btn-close-modal px-4 py-2 rounded-xl text-xs font-medium bg-slate-800 text-slate-300 hover:bg-slate-700">ยกเลิก</button>
+                    <button type="submit" class="px-5 py-2 rounded-xl text-xs font-medium bg-indigo-600 text-white hover:bg-indigo-500 shadow-lg shadow-indigo-600/30">บันทึกข้อมูล</button>
+                </div>
+            </form>
+        </div>
+    </div>
 
-      if (isCloudLive && docRef) {
-        setDoc(docRef, { pallets: palletsData, updatedAt: new Date().toISOString() }, { merge: true })
-          .catch(err => console.error("Firestore sync error:", err));
-      } else {
-        localStorage.setItem('pallet_box_data_v2', JSON.stringify(palletsData));
-      }
-    }
+    <!-- Modal: Firebase Config -->
+    <div id="modal-firebase" class="hidden fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="glass-panel w-full max-w-lg rounded-2xl p-6 shadow-2xl border border-slate-700">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-lg font-bold text-slate-100 flex items-center gap-2">
+                    <i class="fa-solid fa-cloud text-indigo-400"></i> ตั้งค่าการเชื่อมต่อ Firebase Firestore
+                </h3>
+                <button class="btn-close-firebase text-slate-400 hover:text-white">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+            <p class="text-xs text-slate-400 mb-4">ใส่ Firebase Config JSON เพื่อซิงก์ข้อมูลแบบเรียลไทม์ข้ามอุปกรณ์ หากไม่ใส่ ระบบจะทำงานในรูปแบบ Offline LocalStorage อัตโนมัติ</p>
+            
+            <form id="form-firebase" class="space-y-4">
+                <div>
+                    <label class="block text-xs font-medium text-slate-300 mb-1">Firebase Configuration (JSON Object)</label>
+                    <textarea id="input-firebase-config" rows="8" placeholder='{
+  "apiKey": "AIzaSy...",
+  "authDomain": "app.firebaseapp.com",
+  "projectId": "app-id",
+  "storageBucket": "app.appspot.com",
+  "messagingSenderId": "12345...",
+  "appId": "1:12345..."
+}' class="w-full font-mono text-xs bg-slate-900 border border-slate-700 rounded-xl p-3 text-slate-200 focus:outline-none focus:border-indigo-500"></textarea>
+                </div>
+                <div class="flex justify-between items-center pt-2">
+                    <button type="button" id="btn-clear-firebase" class="text-xs text-rose-400 hover:underline">ล้างค่า Config (กลับไปใช้ Local Storage)</button>
+                    <div class="flex gap-2">
+                        <button type="button" class="btn-close-firebase px-4 py-2 rounded-xl text-xs font-medium bg-slate-800 text-slate-300 hover:bg-slate-700">ยกเลิก</button>
+                        <button type="submit" class="px-5 py-2 rounded-xl text-xs font-medium bg-indigo-600 text-white hover:bg-indigo-500 shadow-lg">เชื่อมต่อ Cloud</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
 
-    window.appAddPallet = function() {
-      const newPallet = {
-        id: 'pallet_' + Date.now(),
-        boxes: [
-          { id: 'box_' + Date.now() + '_1', label: 'แฟ้มเอกสารบัญชี 2026' }
-        ]
-      };
-      palletsData.push(newPallet);
-      saveData();
-    };
+    <!-- Application Script Logic -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        import { getFirestore, collection, onSnapshot, doc, setDoc, deleteDoc, writeBatch } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
-    window.appRemovePallet = function(palletId) {
-      palletsData = palletsData.filter(p => p.id !== palletId);
-      saveData();
-    };
+        // ==========================================
+        // 1. CONSTANTS & GEOMETRY DIMENSIONS
+        // ==========================================
+        const PALLET_DIM = { width: 2.2, height: 0.2, depth: 2.2 };
+        const BOX_DIM = { width: 0.95, height: 0.7, depth: 0.95 };
+        const GRID_SPACING = { x: 3.2, z: 3.2 }; // Distance between pallet centers
+        const COLS_PER_ROW = 3; // Maximum pallets in one grid row
 
-    window.appAddBox = function(palletId) {
-      const pallet = palletsData.find(p => p.id === palletId);
-      if (pallet) {
-        pallet.boxes.push({
-          id: 'box_' + Date.now(),
-          label: `ลังแฟ้มใหม่ #${pallet.boxes.length + 1}`
-        });
-        saveData();
-      }
-    };
+        // Application State
+        let pallets = [];
+        let boxes = [];
+        let activeSearchTerm = '';
+        let isFirebaseActive = false;
+        let db = null;
+        let unsubscribeListeners = [];
 
-    window.appRemoveBox = function(palletId, boxId) {
-      const pallet = palletsData.find(p => p.id === palletId);
-      if (pallet) {
-        pallet.boxes = pallet.boxes.filter(b => b.id !== boxId);
-        saveData();
-      }
-    };
+        // Three.js Core Variables
+        let scene, camera, renderer, controls;
+        let palletMeshes = new Map(); // palletId -> Mesh Group
+        let boxMeshes = new Map();    // boxId -> Mesh Group
+        let labelTexturesCache = new Map();
 
-    window.appEditBoxLabel = function(palletId, boxId, currentLabel) {
-      editingTarget = { palletId, boxId };
-      document.getElementById('modalBoxLabelInput').value = currentLabel;
-      document.getElementById('editModal').classList.remove('hidden');
-      document.getElementById('modalBoxLabelInput').focus();
-    };
+        // ==========================================
+        // 2. THREE.JS SCENE INITIALIZATION
+        // ==========================================
+        function initThreeScene() {
+            const container = document.getElementById('canvas-container');
+            
+            // Scene setup
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x0b0f19);
+            scene.fog = new THREE.FogExp2(0x0b0f19, 0.025);
 
-    // Modal Actions
-    document.getElementById('saveModalBtn').addEventListener('click', () => {
-      if (editingTarget) {
-        const newLabel = document.getElementById('modalBoxLabelInput').value.trim() || 'ไม่มีชื่อแฟ้ม';
-        const pallet = palletsData.find(p => p.id === editingTarget.palletId);
-        if (pallet) {
-          const box = pallet.boxes.find(b => b.id === editingTarget.boxId);
-          if (box) {
-            box.label = newLabel;
-            saveData();
-          }
+            // Camera setup
+            camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 1000);
+            camera.position.set(6, 7, 10);
+
+            // Renderer setup
+            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+            renderer.setSize(container.clientWidth, container.clientHeight);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            renderer.shadowMap.enabled = true;
+            renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+            container.appendChild(renderer.domElement);
+
+            // Controls setup
+            controls = new THREE.OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+            controls.dampingFactor = 0.05;
+            controls.maxPolarAngle = Math.PI / 2 - 0.02; // Prevents camera going below floor
+            controls.minDistance = 2;
+            controls.maxDistance = 50;
+
+            // Lighting setup
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
+            scene.add(ambientLight);
+
+            const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            dirLight.position.set(15, 25, 15);
+            dirLight.castShadow = true;
+            dirLight.shadow.mapSize.width = 2048;
+            dirLight.shadow.mapSize.height = 2048;
+            dirLight.shadow.bias = -0.0001;
+            scene.add(dirLight);
+
+            const fillLight = new THREE.DirectionalLight(0x38bdf8, 0.3);
+            fillLight.position.set(-15, 10, -15);
+            scene.add(fillLight);
+
+            // Ground Grid & Floor Plane
+            const gridHelper = new THREE.GridHelper(60, 60, 0x334155, 0x1e293b);
+            gridHelper.position.y = 0;
+            scene.add(gridHelper);
+
+            const floorGeo = new THREE.PlaneGeometry(100, 100);
+            const floorMat = new THREE.MeshStandardMaterial({ color: 0x090d16, roughness: 0.9, metalness: 0.1 });
+            const floor = new THREE.Mesh(floorGeo, floorMat);
+            floor.rotation.x = -Math.PI / 2;
+            floor.receiveShadow = true;
+            scene.add(floor);
+
+            // Window Resize Handler
+            window.addEventListener('resize', onWindowResize);
+            
+            // Start Render Loop
+            animate();
         }
-      }
-      document.getElementById('editModal').classList.add('hidden');
-    });
 
-    document.getElementById('closeModalBtn').addEventListener('click', () => {
-      document.getElementById('editModal').classList.add('hidden');
-    });
-    document.getElementById('cancelModalBtn').addEventListener('click', () => {
-      document.getElementById('editModal').classList.add('hidden');
-    });
-
-    // Button event listeners
-    document.getElementById('addPalletBtn').addEventListener('click', window.appAddPallet);
-
-    document.getElementById('resetViewBtn').addEventListener('click', () => {
-      camera.position.set(12, 12, 16);
-      controls.target.set(3, 0, 0);
-      controls.update();
-    });
-
-    // Realtime Search Listener
-    const searchInput = document.getElementById('searchInput');
-    const clearSearchBtn = document.getElementById('clearSearchBtn');
-
-    searchInput.addEventListener('input', (e) => {
-      searchKeyword = e.target.value;
-      if (searchKeyword.length > 0) {
-        clearSearchBtn.classList.remove('hidden');
-      } else {
-        clearSearchBtn.classList.add('hidden');
-      }
-      render3DScene();
-      renderUI();
-    });
-
-    clearSearchBtn.addEventListener('click', () => {
-      searchInput.value = '';
-      searchKeyword = '';
-      clearSearchBtn.classList.add('hidden');
-      render3DScene();
-      renderUI();
-    });
-
-    // JSON Export / Import
-    document.getElementById('exportBtn').addEventListener('click', () => {
-      const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(palletsData, null, 2));
-      const downloadAnchor = document.createElement('a');
-      downloadAnchor.setAttribute("href", dataStr);
-      downloadAnchor.setAttribute("download", `pallet_layout_${new Date().toISOString().slice(0,10)}.json`);
-      document.body.appendChild(downloadAnchor);
-      downloadAnchor.click();
-      downloadAnchor.remove();
-    });
-
-    document.getElementById('importBtn').addEventListener('click', () => {
-      document.getElementById('importFileInput').click();
-    });
-
-    document.getElementById('importFileInput').addEventListener('change', (e) => {
-      const file = e.target.files[0];
-      if (!file) return;
-
-      const reader = new FileReader();
-      reader.onload = function(event) {
-        try {
-          const imported = JSON.parse(event.target.result);
-          if (Array.isArray(imported)) {
-            palletsData = imported;
-            saveData();
-          } else {
-            alert('รูปแบบไฟล์ JSON ไม่ถูกต้อง');
-          }
-        } catch (err) {
-          alert('ไม่สามารถอ่านไฟล์ JSON ได้');
+        function onWindowResize() {
+            const container = document.getElementById('canvas-container');
+            camera.aspect = container.clientWidth / container.clientHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(container.clientWidth, container.clientHeight);
         }
-      };
-      reader.readAsText(file);
-    });
 
-    // Mobile Sidebar Toggles
-    const sidebar = document.getElementById('sidebar');
-    document.getElementById('toggleSidebarBtn').addEventListener('click', () => {
-      sidebar.classList.remove('translate-x-full');
-    });
-    document.getElementById('closeSidebarBtn').addEventListener('click', () => {
-      sidebar.classList.add('translate-x-full');
-    });
+        function animate(time) {
+            requestAnimationFrame(animate);
+            TWEEN.update();
+            controls.update();
 
-    // --- INITIALIZATION & FIREBASE SETUP ---
-    async function initSystem() {
-      const statusDot = document.getElementById('statusDot');
-      const statusText = document.getElementById('statusText');
-
-      if (firebaseConfig) {
-        try {
-          const app = initializeApp(firebaseConfig);
-          auth = getAuth(app);
-          db = getFirestore(app);
-
-          if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-            await signInWithCustomToken(auth, __initial_auth_token);
-          } else {
-            await signInAnonymously(auth);
-          }
-
-          docRef = doc(db, 'artifacts', appId, 'public', 'data', 'pallet_layout_db');
-
-          onSnapshot(docRef, (docSnap) => {
-            if (docSnap.exists() && docSnap.data().pallets) {
-              palletsData = docSnap.data().pallets;
-            } else {
-              // Default Initial Data if cloud empty
-              palletsData = [
-                {
-                  id: 'pallet_1',
-                  boxes: [
-                    { id: 'b1', label: 'แฟ้มบุคคล HR-2026' },
-                    { id: 'b2', label: 'เอกสารบัญชีไตรมาส 1' },
-                    { id: 'b3', label: 'สัญญาจัดซื้อ 2025-2026' }
-                  ]
-                },
-                {
-                  id: 'pallet_2',
-                  boxes: [
-                    { id: 'b4', label: 'รายงานการประชุมบริหาร' },
-                    { id: 'b5', label: 'แฟ้มภาษีประจำปี' }
-                  ]
+            // Animate pulsing meshes for search match
+            boxMeshes.forEach((mesh, boxId) => {
+                if (mesh.userData.isHighlighted) {
+                    const scaleFactor = 1 + Math.sin(time * 0.006) * 0.03;
+                    mesh.scale.set(scaleFactor, scaleFactor, scaleFactor);
+                    if (mesh.userData.boxMaterial) {
+                        mesh.userData.boxMaterial.emissive.setHex(0x554400);
+                    }
+                } else {
+                    mesh.scale.set(1, 1, 1);
+                    if (mesh.userData.boxMaterial) {
+                        mesh.userData.boxMaterial.emissive.setHex(0x000000);
+                    }
                 }
-              ];
-              setDoc(docRef, { pallets: palletsData });
+            });
+
+            renderer.render(scene, camera);
+        }
+
+        // Camera Helper Presets
+        window.setCameraView = function(viewType) {
+            const target = controls.target.clone();
+            let camPos = new THREE.Vector3();
+
+            if (viewType === 'top') {
+                camPos.set(target.x, target.y + 12, target.z + 0.001);
+            } else if (viewType === 'front') {
+                camPos.set(target.x, target.y + 2, target.z + 10);
+            } else { // 3D free
+                camPos.set(target.x + 6, target.y + 6, target.z + 8);
             }
-            isCloudLive = true;
-            statusDot.className = "w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse";
-            statusText.innerText = "CLOUD LIVE";
-            statusText.className = "text-emerald-400 font-semibold";
-            render3DScene();
-            renderUI();
-          }, (error) => {
-            console.error("Firestore snapshot error:", error);
-            fallbackToLocal();
-          });
 
-        } catch (e) {
-          console.warn("Firebase Init failed, using local storage:", e);
-          fallbackToLocal();
+            new TWEEN.Tween(camera.position)
+                .to(camPos, 800)
+                .easing(TWEEN.Easing.Cubic.Out)
+                .start();
+        };
+
+        // Smooth camera move to target position
+        function focusCameraOn(targetPosition) {
+            new TWEEN.Tween(controls.target)
+                .to({ x: targetPosition.x, y: targetPosition.y, z: targetPosition.z }, 800)
+                .easing(TWEEN.Easing.Cubic.Out)
+                .start();
+
+            new TWEEN.Tween(camera.position)
+                .to({ x: targetPosition.x + 4, y: targetPosition.y + 4, z: targetPosition.z + 6 }, 800)
+                .easing(TWEEN.Easing.Cubic.Out)
+                .start();
         }
-      } else {
-        fallbackToLocal();
-      }
-    }
 
-    function fallbackToLocal() {
-      isCloudLive = false;
-      const statusDot = document.getElementById('statusDot');
-      const statusText = document.getElementById('statusText');
-      statusDot.className = "w-2.5 h-2.5 rounded-full bg-amber-500";
-      statusText.innerText = "LOCAL STORAGE";
-      statusText.className = "text-amber-400 font-semibold";
+        // ==========================================
+        // 3. 3D MESH BUILDERS (Pallets & Boxes)
+        // ==========================================
 
-      const local = localStorage.getItem('pallet_box_data_v2');
-      if (local) {
-        try {
-          palletsData = JSON.parse(local);
-        } catch(e) {
-          palletsData = getDemoData();
+        // Generate dynamic canvas texture for cardboard box side labels
+        function createBoxLabelTexture(label, boxColorHex) {
+            const cacheKey = `${label}_${boxColorHex}`;
+            if (labelTexturesCache.has(cacheKey)) {
+                return labelTexturesCache.get(cacheKey);
+            }
+
+            const canvas = document.createElement('canvas');
+            canvas.width = 512;
+            canvas.height = 256;
+            const ctx = canvas.getContext('2d');
+
+            // Cardboard Base
+            ctx.fillStyle = boxColorHex || '#c29b38';
+            ctx.fillRect(0, 0, 512, 256);
+
+            // Cardboard texture lines
+            ctx.fillStyle = 'rgba(0,0,0,0.05)';
+            for (let i = 0; i < 256; i += 4) {
+                ctx.fillRect(0, i, 512, 2);
+            }
+
+            // White Sticker Label Background
+            ctx.fillStyle = '#ffffff';
+            ctx.roundRect(30, 30, 452, 196, 16);
+            ctx.fill();
+
+            // Inner Border
+            ctx.strokeStyle = '#cbd5e1';
+            ctx.lineWidth = 4;
+            ctx.stroke();
+
+            // Label Header Accent
+            ctx.fillStyle = '#4f46e5';
+            ctx.fillRect(30, 30, 452, 24);
+
+            // Icon & Text
+            ctx.fillStyle = '#0f172a';
+            ctx.font = 'bold 36px Sans-Serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            
+            // Truncate long text if necessary
+            let displayText = label.length > 18 ? label.substring(0, 16) + '...' : label;
+            ctx.fillText(displayText, 256, 130);
+
+            // Barcode graphic mock
+            ctx.fillStyle = '#1e293b';
+            const barcodeWidths = [4, 2, 6, 2, 8, 3, 2, 5, 2, 7, 3, 2, 6, 4, 2, 5, 8, 2];
+            let startX = 120;
+            for (let w of barcodeWidths) {
+                ctx.fillRect(startX, 175, w, 32);
+                startX += w + 6;
+            }
+
+            const texture = new THREE.CanvasTexture(canvas);
+            labelTexturesCache.set(cacheKey, texture);
+            return texture;
         }
-      } else {
-        palletsData = getDemoData();
-      }
-      render3DScene();
-      renderUI();
-    }
 
-    function getDemoData() {
-      return [
-        {
-          id: 'pallet_1',
-          boxes: [
-            { id: 'b1', label: 'แฟ้มบุคคล HR-2026' },
-            { id: 'b2', label: 'เอกสารบัญชีไตรมาส 1' }
-          ]
-        },
-        {
-          id: 'pallet_2',
-          boxes: [
-            { id: 'b3', label: 'สัญญาจัดซื้อ 2025-2026' }
-          ]
+        // Build 3D Pallet Mesh
+        function createPalletMesh(palletData) {
+            const palletGroup = new THREE.Group();
+            
+            // Wooden Material
+            const woodMat = new THREE.MeshStandardMaterial({ color: 0x855e42, roughness: 0.8 });
+
+            // Top Planks
+            const plankGeo = new THREE.BoxGeometry(PALLET_DIM.width, 0.04, 0.22);
+            for (let i = -1; i <= 1; i += 0.4) {
+                const plank = new THREE.Mesh(plankGeo, woodMat);
+                plank.position.set(0, PALLET_DIM.height - 0.02, i * (PALLET_DIM.depth / 2.2));
+                plank.castShadow = true;
+                plank.receiveShadow = true;
+                palletGroup.add(plank);
+            }
+
+            // Bottom Stringers / Blocks
+            const blockGeo = new THREE.BoxGeometry(0.2, PALLET_DIM.height - 0.04, PALLET_DIM.depth);
+            [-0.9, 0, 0.9].forEach(x => {
+                const block = new THREE.Mesh(blockGeo, woodMat);
+                block.position.set(x, (PALLET_DIM.height - 0.04) / 2, 0);
+                block.castShadow = true;
+                block.receiveShadow = true;
+                palletGroup.add(block);
+            });
+
+            // Position Pallet in Grid Layout
+            const pos = getPalletWorldPosition(palletData.index);
+            palletGroup.position.set(pos.x, pos.y, pos.z);
+            palletGroup.userData = { id: palletData.id, type: 'pallet' };
+
+            return palletGroup;
         }
-      ];
-    }
 
-    // --- ANIMATION LOOP ---
-    const clock = new THREE.Clock();
+        // Build 3D Box Mesh
+        function createBoxMesh(boxData, boxIndexOnPallet, palletWorldPos) {
+            const boxGroup = new THREE.Group();
 
-    function animate() {
-      requestAnimationFrame(animate);
-      const elapsedTime = clock.getElapsedTime();
+            // Calculate Stack Layer and Grid Position on Pallet
+            // Rule: EXACTLY 4 boxes per layer (2x2 grid)
+            const layer = Math.floor(boxIndexOnPallet / 4);       // Layer 0 = bottom 4, Layer 1 = next 4...
+            const spotInLayer = boxIndexOnPallet % 4;             // 0, 1, 2, 3
+            const gridX = spotInLayer % 2;                       // 0 or 1
+            const gridZ = Math.floor(spotInLayer / 2);           // 0 or 1
 
-      // Gentle floating/pulsing animation for matched search boxes
-      boxMeshRegistry.forEach((item) => {
-        if (item.isMatched) {
-          // Subtle vertical floating motion
-          item.mesh.position.y = item.originalY + Math.sin(elapsedTime * 4 + item.seed) * 0.08;
-          // Pulse scale
-          const scale = 1 + Math.sin(elapsedTime * 6 + item.seed) * 0.02;
-          item.mesh.scale.set(scale, scale, scale);
-        } else {
-          item.mesh.position.y = item.originalY;
-          item.mesh.scale.set(1, 1, 1);
+            // Exact offsets inside 2x2 layer relative to pallet center
+            const offsetX = (gridX === 0 ? -1 : 1) * (BOX_DIM.width / 2 + 0.02);
+            const offsetZ = (gridZ === 0 ? -1 : 1) * (BOX_DIM.depth / 2 + 0.02);
+            
+            // Y position stacks strictly above previous layers
+            const posY = PALLET_DIM.height + (layer * BOX_DIM.height) + (BOX_DIM.height / 2);
+
+            // Material set (Label texture on sides, solid box color on top/bottom)
+            const labelTexture = createBoxLabelTexture(boxData.label, boxData.color || '#c29b38');
+            const sideMat = new THREE.MeshStandardMaterial({ map: labelTexture, roughness: 0.6 });
+            const topMat = new THREE.MeshStandardMaterial({ color: boxData.color || '#c29b38', roughness: 0.7 });
+
+            // Box Mesh Materials array [px, nx, py, ny, pz, nz]
+            const boxMaterials = [sideMat, sideMat, topMat, topMat, sideMat, sideMat];
+
+            const boxGeo = new THREE.BoxGeometry(BOX_DIM.width, BOX_DIM.height, BOX_DIM.depth);
+            const boxMesh = new THREE.Mesh(boxGeo, boxMaterials);
+            boxMesh.castShadow = true;
+            boxMesh.receiveShadow = true;
+
+            boxGroup.add(boxMesh);
+
+            // Calculate world final position
+            const targetPos = {
+                x: palletWorldPos.x + offsetX,
+                y: posY,
+                z: palletWorldPos.z + offsetZ
+            };
+
+            boxGroup.position.set(targetPos.x, targetPos.y, targetPos.z);
+            boxGroup.userData = { 
+                id: boxData.id, 
+                label: boxData.label, 
+                palletId: boxData.palletId,
+                layer: layer + 1,
+                boxMaterial: topMat,
+                isHighlighted: false
+            };
+
+            return boxGroup;
         }
-      });
 
-      controls.update();
-      renderer.render(scene, camera);
-    }
+        // Calculate Pallet center position based on grid index
+        function getPalletWorldPosition(index) {
+            const row = Math.floor(index / COLS_PER_ROW);
+            const col = index % COLS_PER_ROW;
 
-    // Responsive Canvas Resize
-    window.addEventListener('resize', () => {
-      camera.aspect = container.clientWidth / container.clientHeight;
-      camera.updateProjectionMatrix();
-      renderer.setSize(container.clientWidth, container.clientHeight);
-    });
+            const startX = -((COLS_PER_ROW - 1) * GRID_SPACING.x) / 2;
+            const startZ = 0;
 
-    // Start App
-    initSystem();
-    animate();
-  </script>
+            return {
+                x: startX + col * GRID_SPACING.x,
+                y: 0,
+                z: startZ + row * GRID_SPACING.z
+            };
+        }
+
+        // ==========================================
+        // 4. SCENE RE-RENDER & SEARCH HIGHLIGHT LOGIC
+        // ==========================================
+        function update3DScene() {
+            if (!scene) return;
+
+            // Clear old meshes
+            palletMeshes.forEach(mesh => scene.remove(mesh));
+            boxMeshes.forEach(mesh => scene.remove(mesh));
+            palletMeshes.clear();
+            boxMeshes.clear();
+
+            // Sort pallets by index
+            const sortedPallets = [...pallets].sort((a, b) => a.index - b.index);
+
+            // Render Pallets & their Boxes
+            sortedPallets.forEach((pallet, pIdx) => {
+                const palletWorldPos = getPalletWorldPosition(pIdx);
+                const palletMesh = createPalletMesh({ ...pallet, index: pIdx });
+                scene.add(palletMesh);
+                palletMeshes.set(pallet.id, palletMesh);
+
+                // Get boxes belonging to this pallet
+                const palletBoxes = boxes.filter(b => b.palletId === pallet.id);
+                
+                palletBoxes.forEach((box, boxIndexOnPallet) => {
+                    const boxMesh = createBoxMesh(box, boxIndexOnPallet, palletWorldPos);
+                    
+                    // Search term matching state
+                    const matchesSearch = activeSearchTerm && box.label.toLowerCase().includes(activeSearchTerm.toLowerCase());
+                    
+                    if (activeSearchTerm) {
+                        if (matchesSearch) {
+                            boxMesh.userData.isHighlighted = true;
+                        } else {
+                            // Dim non-matching boxes
+                            boxMesh.children.forEach(c => {
+                                if (c.material) {
+                                    if (Array.isArray(c.material)) {
+                                        c.material.forEach(m => { m.transparent = true; m.opacity = 0.25; });
+                                    } else {
+                                        c.material.transparent = true;
+                                        c.material.opacity = 0.25;
+                                    }
+                                }
+                            });
+                        }
+                    }
+
+                    scene.add(boxMesh);
+                    boxMeshes.set(box.id, boxMesh);
+                });
+            });
+
+            // Update UI Sidebar Stats & Search list
+            updateSidebarUI();
+            updateSearchResultsUI();
+        }
+
+        // ==========================================
+        // 5. UI UPDATES & DOM HANDLERS
+        // ==========================================
+        function updateSidebarUI() {
+            // Stats
+            document.getElementById('stat-pallets').innerText = pallets.length;
+            document.getElementById('stat-boxes').innerText = boxes.length;
+
+            // Calculate max layer height across pallets
+            let maxLayer = 0;
+            pallets.forEach(p => {
+                const count = boxes.filter(b => b.palletId === p.id).length;
+                const layers = Math.ceil(count / 4);
+                if (layers > maxLayer) maxLayer = layers;
+            });
+            document.getElementById('stat-max-layers').innerText = maxLayer;
+
+            // Render Pallet Cards in Sidebar
+            const palletListContainer = document.getElementById('pallet-list');
+            palletListContainer.innerHTML = '';
+
+            const sortedPallets = [...pallets].sort((a, b) => a.index - b.index);
+
+            if (sortedPallets.length === 0) {
+                palletListContainer.innerHTML = `
+                    <div class="text-center py-8 text-slate-500 text-xs">
+                        <i class="fa-solid fa-inbox text-3xl mb-2 block"></i>
+                        ยังไม่มีพาเลทในคลัง กด "เพิ่มพาเลทใหม่" เพื่อเริ่มต้น
+                    </div>`;
+                return;
+            }
+
+            sortedPallets.forEach((pallet, idx) => {
+                const palletBoxes = boxes.filter(b => b.palletId === pallet.id);
+                const totalLayers = Math.ceil(palletBoxes.length / 4);
+
+                const card = document.createElement('div');
+                card.className = 'glass-panel p-3 rounded-xl border border-slate-700/60 transition-all hover:border-slate-500';
+                
+                let boxesHtml = '';
+                palletBoxes.forEach((b, bIdx) => {
+                    const layerNum = Math.floor(bIdx / 4) + 1;
+                    boxesHtml += `
+                        <div class="flex justify-between items-center text-xs p-1.5 rounded-lg bg-slate-900/60 border border-slate-800 hover:border-slate-600 transition-all group">
+                            <span class="text-slate-200 font-medium truncate flex items-center gap-1.5" title="${b.label}">
+                                <span class="w-2 h-2 rounded-full" style="background-color: ${b.color || '#c29b38'}"></span>
+                                ${b.label}
+                            </span>
+                            <div class="flex items-center gap-2">
+                                <span class="text-[10px] px-1.5 py-0.5 rounded bg-slate-800 text-amber-400 font-mono">ชั้น ${layerNum}</span>
+                                <button onclick="deleteBox('${b.id}')" class="text-slate-500 hover:text-rose-400 opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <i class="fa-solid fa-trash-can text-xs"></i>
+                                </button>
+                            </div>
+                        </div>`;
+                });
+
+                card.innerHTML = `
+                    <div class="flex justify-between items-center mb-2 pb-2 border-b border-slate-800">
+                        <div class="flex items-center gap-2 cursor-pointer" onclick="focusPallet('${pallet.id}')">
+                            <span class="bg-indigo-500/20 text-indigo-400 font-bold text-xs px-2 py-0.5 rounded-md border border-indigo-500/30">
+                                พาเลท #${idx + 1}
+                            </span>
+                            <span class="text-xs font-semibold text-slate-200">${pallet.name || 'พาเลทมาตรฐาน'}</span>
+                        </div>
+                        <div class="flex items-center gap-1">
+                            <span class="text-[10px] text-slate-400 font-mono mr-1">${palletBoxes.length} ลัง (${totalLayers} ชั้น)</span>
+                            <button onclick="deletePallet('${pallet.id}')" class="text-slate-500 hover:text-rose-400 p-1 rounded hover:bg-slate-800" title="ลบพาเลท">
+                                <i class="fa-solid fa-trash-can text-xs"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="space-y-1.5 max-h-40 overflow-y-auto pr-1">
+                        ${palletBoxes.length > 0 ? boxesHtml : '<div class="text-[11px] text-slate-500 italic py-1 text-center">ไม่มีลังบนพาเลทนี้</div>'}
+                    </div>`;
+
+                palletListContainer.appendChild(card);
+            });
+
+            // Update Modal Pallet Select Dropdown options
+            const selectPallet = document.getElementById('select-box-pallet');
+            selectPallet.innerHTML = sortedPallets.map((p, idx) => 
+                `<option value="${p.id}">พาเลท #${idx + 1} - ${p.name || 'พาเลทมาตรฐาน'} (${boxes.filter(b => b.palletId === p.id).length} ลัง)</option>`
+            ).join('');
+        }
+
+        // Render Search Results Dropdown List
+        function updateSearchResultsUI() {
+            const resultsPanel = document.getElementById('search-results-panel');
+            const resultsList = document.getElementById('search-results-list');
+            const searchCount = document.getElementById('search-count');
+
+            if (!activeSearchTerm) {
+                resultsPanel.classList.add('hidden');
+                resultsPanel.classList.remove('flex');
+                return;
+            }
+
+            const matchedBoxes = boxes.filter(b => b.label.toLowerCase().includes(activeSearchTerm.toLowerCase()));
+            searchCount.innerText = matchedBoxes.length;
+
+            resultsList.innerHTML = '';
+            if (matchedBoxes.length === 0) {
+                resultsList.innerHTML = '<div class="text-xs text-slate-400 py-2 text-center">ไม่พบลังเอกสารที่ค้นหา</div>';
+            } else {
+                matchedBoxes.forEach(b => {
+                    const palletObj = pallets.find(p => p.id === b.palletId);
+                    const palletBoxes = boxes.filter(box => box.palletId === b.palletId);
+                    const boxIdx = palletBoxes.findIndex(box => box.id === b.id);
+                    const layer = Math.floor(boxIdx / 4) + 1;
+                    const palletNum = pallets.sort((x, y) => x.index - y.index).findIndex(p => p.id === b.palletId) + 1;
+
+                    const item = document.createElement('div');
+                    item.className = 'p-2 rounded-xl bg-slate-900/80 hover:bg-slate-800 border border-slate-700/50 cursor-pointer flex justify-between items-center transition-all';
+                    item.onclick = () => focusBox(b.id);
+                    item.innerHTML = `
+                        <div class="flex items-center gap-2 overflow-hidden">
+                            <span class="w-2.5 h-2.5 rounded-full flex-shrink-0" style="background-color: ${b.color || '#c29b38'}"></span>
+                            <span class="text-xs font-medium text-slate-100 truncate">${b.label}</span>
+                        </div>
+                        <div class="flex items-center gap-1 flex-shrink-0">
+                            <span class="text-[10px] bg-indigo-950 text-indigo-300 border border-indigo-800 px-1.5 py-0.5 rounded">พาเลท #${palletNum}</span>
+                            <span class="text-[10px] bg-amber-950 text-amber-300 border border-amber-800 px-1.5 py-0.5 rounded">ชั้น ${layer}</span>
+                        </div>`;
+                    resultsList.appendChild(item);
+                });
+            }
+
+            resultsPanel.classList.remove('hidden');
+            resultsPanel.classList.add('flex');
+        }
+
+        // Camera Focus Functions
+        window.focusPallet = function(palletId) {
+            const palletMesh = palletMeshes.get(palletId);
+            if (palletMesh) {
+                focusCameraOn(palletMesh.position);
+            }
+        };
+
+        window.focusBox = function(boxId) {
+            const boxMesh = boxMeshes.get(boxId);
+            if (boxMesh) {
+                focusCameraOn(boxMesh.position);
+            }
+        };
+
+        // ==========================================
+        // 6. DATA ACTIONS (ADD, DELETE, IMPORT/EXPORT)
+        // ==========================================
+        window.addPallet = async function() {
+            const newPallet = {
+                id: 'pallet_' + Date.now(),
+                name: `พาเลท ${pallets.length + 1}`,
+                index: pallets.length,
+                createdAt: new Date().toISOString()
+            };
+
+            if (isFirebaseActive && db) {
+                await setDoc(doc(db, "pallets", newPallet.id), newPallet);
+            } else {
+                pallets.push(newPallet);
+                saveLocalStorage();
+                update3DScene();
+            }
+        };
+
+        window.deletePallet = async function(palletId) {
+            if (!confirm('คุณต้องการลบพาเลทนี้พร้อมลังเอกสารทั้งหมดบนพาเลทหรือไม่?')) return;
+
+            if (isFirebaseActive && db) {
+                const batch = writeBatch(db);
+                batch.delete(doc(db, "pallets", palletId));
+                boxes.filter(b => b.palletId === palletId).forEach(b => {
+                    batch.delete(doc(db, "boxes", b.id));
+                });
+                await batch.commit();
+            } else {
+                pallets = pallets.filter(p => p.id !== palletId);
+                boxes = boxes.filter(b => b.palletId !== palletId);
+                saveLocalStorage();
+                update3DScene();
+            }
+        };
+
+        window.deleteBox = async function(boxId) {
+            if (isFirebaseActive && db) {
+                await deleteDoc(doc(db, "boxes", boxId));
+            } else {
+                boxes = boxes.filter(b => b.id !== boxId);
+                saveLocalStorage();
+                update3DScene();
+            }
+        };
+
+        // Modal Handlers
+        document.getElementById('btn-add-box').addEventListener('click', () => {
+            if (pallets.length === 0) {
+                addPallet().then(() => {
+                    showBoxModal();
+                });
+            } else {
+                showBoxModal();
+            }
+        });
+
+        document.getElementById('btn-add-pallet').addEventListener('click', addPallet);
+
+        function showBoxModal() {
+            document.getElementById('form-box').reset();
+            document.getElementById('modal-box').classList.remove('hidden');
+        }
+
+        document.querySelectorAll('.btn-close-modal').forEach(b => {
+            b.addEventListener('click', () => document.getElementById('modal-box').classList.add('hidden'));
+        });
+
+        // Color Picker in Modal
+        document.querySelectorAll('#color-picker-container button').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                document.querySelectorAll('#color-picker-container button').forEach(b => {
+                    b.classList.remove('ring-2', 'ring-indigo-500');
+                    b.classList.replace('border-white', 'border-transparent');
+                });
+                const color = btn.getAttribute('data-color');
+                btn.classList.add('ring-2', 'ring-indigo-500');
+                btn.classList.replace('border-transparent', 'border-white');
+                document.getElementById('input-box-color').value = color;
+            });
+        });
+
+        // Box Submit
+        document.getElementById('form-box').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const label = document.getElementById('input-box-label').value.trim();
+            const palletId = document.getElementById('select-box-pallet').value;
+            const color = document.getElementById('input-box-color').value;
+            const notes = document.getElementById('input-box-notes').value.trim();
+
+            if (!label || !palletId) return;
+
+            const newBox = {
+                id: 'box_' + Date.now(),
+                label,
+                palletId,
+                color,
+                notes,
+                createdAt: new Date().toISOString()
+            };
+
+            if (isFirebaseActive && db) {
+                await setDoc(doc(db, "boxes", newBox.id), newBox);
+            } else {
+                boxes.push(newBox);
+                saveLocalStorage();
+                update3DScene();
+            }
+
+            document.getElementById('modal-box').classList.add('hidden');
+            
+            // Auto focus on the added box
+            setTimeout(() => focusBox(newBox.id), 200);
+        });
+
+        // Search Input Handlers
+        const searchInput = document.getElementById('search-box');
+        const clearSearchBtn = document.getElementById('clear-search');
+
+        searchInput.addEventListener('input', (e) => {
+            activeSearchTerm = e.target.value.trim();
+            if (activeSearchTerm) {
+                clearSearchBtn.classList.remove('hidden');
+            } else {
+                clearSearchBtn.classList.add('hidden');
+            }
+            update3DScene();
+        });
+
+        clearSearchBtn.addEventListener('click', () => {
+            searchInput.value = '';
+            activeSearchTerm = '';
+            clearSearchBtn.classList.add('hidden');
+            update3DScene();
+        });
+
+        // Export JSON
+        document.getElementById('btn-export').addEventListener('click', () => {
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify({ pallets, boxes }, null, 2));
+            const downloadAnchor = document.createElement('a');
+            downloadAnchor.setAttribute("href", dataStr);
+            downloadAnchor.setAttribute("download", `pallet_stacker_backup_${new Date().toISOString().slice(0,10)}.json`);
+            document.body.appendChild(downloadAnchor);
+            downloadAnchor.click();
+            downloadAnchor.remove();
+        });
+
+        // Import JSON
+        document.getElementById('btn-import-trigger').addEventListener('click', () => {
+            document.getElementById('file-import').click();
+        });
+
+        document.getElementById('file-import').addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = async (event) => {
+                try {
+                    const imported = JSON.parse(event.target.result);
+                    if (imported.pallets && imported.boxes) {
+                        if (isFirebaseActive && db) {
+                            const batch = writeBatch(db);
+                            imported.pallets.forEach(p => batch.set(doc(db, "pallets", p.id), p));
+                            imported.boxes.forEach(b => batch.set(doc(db, "boxes", b.id), b));
+                            await batch.commit();
+                        } else {
+                            pallets = imported.pallets;
+                            boxes = imported.boxes;
+                            saveLocalStorage();
+                            update3DScene();
+                        }
+                        alert('นำเข้าข้อมูลสำเร็จ!');
+                    }
+                } catch (err) {
+                    alert('ไฟล์ JSON ไม่ถูกต้อง');
+                }
+            };
+            reader.readAsText(file);
+        });
+
+        // Local Storage Helpers
+        function saveLocalStorage() {
+            localStorage.setItem('pallet_app_pallets', JSON.stringify(pallets));
+            localStorage.setItem('pallet_app_boxes', JSON.stringify(boxes));
+        }
+
+        function loadLocalStorage() {
+            const localP = localStorage.getItem('pallet_app_pallets');
+            const localB = localStorage.getItem('pallet_app_boxes');
+
+            if (localP && localB) {
+                pallets = JSON.parse(localP);
+                boxes = JSON.parse(localB);
+            } else {
+                // Initial Default Demo Data
+                pallets = [
+                    { id: 'p1', name: 'พาเลท A (เอกสารทั่วไป)', index: 0 },
+                    { id: 'p2', name: 'พาเลท B (เอกสารการเงิน)', index: 1 }
+                ];
+                boxes = [
+                    { id: 'b1', label: 'BOX-2026-001', palletId: 'p1', color: '#c29b38' },
+                    { id: 'b2', label: 'BOX-2026-002', palletId: 'p1', color: '#c29b38' },
+                    { id: 'b3', label: 'BOX-2026-003', palletId: 'p1', color: '#c29b38' },
+                    { id: 'b4', label: 'BOX-2026-004', palletId: 'p1', color: '#c29b38' },
+                    { id: 'b5', label: 'BOX-2026-005 (ชั้น 2)', palletId: 'p1', color: '#3b82f6' },
+                    { id: 'b6', label: 'ACC-TAX-2025', palletId: 'p2', color: '#10b981' }
+                ];
+                saveLocalStorage();
+            }
+            update3DScene();
+        }
+
+        // ==========================================
+        // 7. FIREBASE SYNC INTEGRATION
+        // ==========================================
+        const firebaseModal = document.getElementById('modal-firebase');
+        document.getElementById('btn-toggle-firebase-modal').addEventListener('click', () => {
+            firebaseModal.classList.remove('hidden');
+        });
+        document.querySelectorAll('.btn-close-firebase').forEach(b => {
+            b.addEventListener('click', () => firebaseModal.classList.add('hidden'));
+        });
+
+        function initFirebase(config) {
+            try {
+                // Detach existing listeners
+                unsubscribeListeners.forEach(unsub => unsub());
+                unsubscribeListeners = [];
+
+                const app = initializeApp(config);
+                db = getFirestore(app);
+
+                // Listen to Pallets
+                const unsubP = onSnapshot(collection(db, "pallets"), (snapshot) => {
+                    pallets = snapshot.docs.map(doc => doc.data());
+                    update3DScene();
+                });
+
+                // Listen to Boxes
+                const unsubB = onSnapshot(collection(db, "boxes"), (snapshot) => {
+                    boxes = snapshot.docs.map(doc => doc.data());
+                    update3DScene();
+                });
+
+                unsubscribeListeners.push(unsubP, unsubB);
+
+                isFirebaseActive = true;
+                updateStatusIndicator(true, "Cloud Firestore Live");
+                localStorage.setItem('pallet_app_firebase_config', JSON.stringify(config));
+            } catch (err) {
+                console.error("Firebase init failed:", err);
+                isFirebaseActive = false;
+                updateStatusIndicator(false, "Local Offline Mode (Firebase error)");
+                loadLocalStorage();
+            }
+        }
+
+        document.getElementById('form-firebase').addEventListener('submit', (e) => {
+            e.preventDefault();
+            const configRaw = document.getElementById('input-firebase-config').value.trim();
+            try {
+                const config = JSON.parse(configRaw);
+                initFirebase(config);
+                firebaseModal.classList.add('hidden');
+            } catch (err) {
+                alert('การใส่ JSON Config ไม่ถูกต้อง');
+            }
+        });
+
+        document.getElementById('btn-clear-firebase').addEventListener('click', () => {
+            localStorage.removeItem('pallet_app_firebase_config');
+            isFirebaseActive = false;
+            unsubscribeListeners.forEach(unsub => unsub());
+            unsubscribeListeners = [];
+            document.getElementById('input-firebase-config').value = '';
+            updateStatusIndicator(false, "Local Storage Mode");
+            firebaseModal.classList.add('hidden');
+            loadLocalStorage();
+        });
+
+        function updateStatusIndicator(isOnline, text) {
+            const dot = document.getElementById('status-dot');
+            const label = document.getElementById('status-text');
+
+            if (isOnline) {
+                dot.className = "w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse";
+                label.className = "text-emerald-400";
+                label.innerText = text;
+            } else {
+                dot.className = "w-2.5 h-2.5 rounded-full bg-amber-500";
+                label.className = "text-amber-400";
+                label.innerText = text;
+            }
+        }
+
+        // ==========================================
+        // 8. APP INITIALIZATION ENTRY POINT
+        // ==========================================
+        window.addEventListener('load', () => {
+            initThreeScene();
+
+            const savedFirebaseConfig = localStorage.getItem('pallet_app_firebase_config');
+            if (savedFirebaseConfig) {
+                try {
+                    const config = JSON.parse(savedFirebaseConfig);
+                    document.getElementById('input-firebase-config').value = JSON.stringify(config, null, 2);
+                    initFirebase(config);
+                } catch (e) {
+                    updateStatusIndicator(false, "Local Storage Mode");
+                    loadLocalStorage();
+                }
+            } else {
+                updateStatusIndicator(false, "Local Storage Mode");
+                loadLocalStorage();
+            }
+        });
+    </script>
 </body>
 </html>
