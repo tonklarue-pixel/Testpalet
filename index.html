@@ -73,7 +73,7 @@
                     <h1 class="font-bold text-lg leading-tight bg-gradient-to-r from-indigo-400 to-cyan-400 bg-clip-text text-transparent">
                         ระบบจัดเรียงลังแฟ้ม 3D (Smooth Engine)
                     </h1>
-                    <p class="text-xs text-slate-400">ระบบตาราง 2x2 ชั้นไม่จำกัด + ค้นหาและจัดเรียง</p>
+                    <p class="text-xs text-slate-400">ระบบตาราง 2x2 ชั้นไม่จำกัด + ค้นหาและจัดการกล่อง</p>
                 </div>
             </div>
 
@@ -148,9 +148,9 @@
                 </div>
 
                 <div class="text-[11px] text-slate-400 bg-slate-900/40 p-3 rounded-xl border border-slate-800/80 flex flex-col gap-1">
-                    <div class="font-medium text-slate-300">💡 เคล็ดลับการใช้งาน:</div>
-                    <div>• คลิกที่กล่องบนจอ 3D เพื่อซูมและดูข้อมูล</div>
-                    <div>• สามารถกดปุ่มจัดเรียง/สลับตำแหน่งกล่องในการ์ดด้านขวาได้</div>
+                    <div class="font-medium text-slate-300">💡 เคล็ดลับการจัดการ:</div>
+                    <div>• คลิกที่กล่องบนจอ 3D เพื่อซูมดูข้อมูลได้ทันที</div>
+                    <div>• กดปุ่ม 🔄 ในรายการขวาเพื่อย้ายกล่องไปพาเลทอื่น</div>
                 </div>
 
             </div>
@@ -664,7 +664,7 @@
         }
 
         function moveBoxPrompt(fromPalletId, boxId) {
-            const targetPalletId = prompt("ย้ายไปพาเลทใด? (กรอก ID หรือเลือกจากรายการพาเลท):\n" + palletsData.map(p => `${p.id} = ${p.name}`).join("\n"));
+            const targetPalletId = prompt("ย้ายไปพาเลทใด? (กรอก ID หรือชื่อพาเลท):\n" + palletsData.map(p => `${p.id} = ${p.name}`).join("\n"));
             if (!targetPalletId) return;
 
             const targetPallet = palletsData.find(p => p.id === targetPalletId || p.name.includes(targetPalletId));
