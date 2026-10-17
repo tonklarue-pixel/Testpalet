@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>3D Pallet & File Box Manager (Free Drag & Drop)</title>
+    <title>3D Pallet & Grid Coordinate System (Warehouse Pro)</title>
     
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -40,7 +40,7 @@
             z-index: 1;
         }
         .glass-panel {
-            background: rgba(15, 23, 42, 0.85);
+            background: rgba(15, 23, 42, 0.88);
             backdrop-filter: blur(12px);
             border: 1px solid rgba(255, 255, 255, 0.1);
         }
@@ -65,7 +65,7 @@
     <div id="drag-toast" class="fixed top-20 left-1/2 -translate-x-1/2 z-50 pointer-events-none transition-all duration-300 opacity-0 transform -translate-y-2">
         <div class="bg-indigo-600/90 backdrop-blur-md text-white text-xs font-semibold px-4 py-2 rounded-full shadow-2xl flex items-center gap-2 border border-indigo-400/40">
             <span class="w-2 h-2 rounded-full bg-cyan-400 animate-ping"></span>
-            <span id="drag-toast-text">กำลังลากกล่อง... วางลงบนช่องพาเลทที่ต้องการ</span>
+            <span id="drag-toast-text">กำลังย้ายกล่อง...</span>
         </div>
     </div>
 
@@ -76,13 +76,13 @@
         <div class="flex flex-wrap justify-between items-center gap-4 pointer-events-auto">
             <div class="glass-panel px-5 py-3 rounded-2xl flex items-center gap-3 shadow-2xl">
                 <div class="p-2 bg-indigo-600 rounded-xl">
-                    <i data-lucide="boxes" class="w-6 h-6 text-white"></i>
+                    <i data-lucide="map-pin" class="w-6 h-6 text-white"></i>
                 </div>
                 <div>
                     <h1 class="font-bold text-lg leading-tight bg-gradient-to-r from-indigo-300 via-cyan-300 to-emerald-300 bg-clip-text text-transparent">
-                        ระบบจัดเรียงกล่อง 3D (ลากวางอิสระ)
+                        ระบบคลังสินค้า 3D (ระบบพิกัดช่องคงที่)
                     </h1>
-                    <p class="text-xs text-slate-400">คลิกค้างแล้วลากกล่องไปวางช่อง 1-4 หรือข้ามพาเลทได้ทันที</p>
+                    <p class="text-xs text-slate-400">พิกัดอัตโนมัติ Pallet - Slot - Layer • ลื่นไหล 60FPS</p>
                 </div>
             </div>
 
@@ -93,7 +93,7 @@
                         <i data-lucide="rotate-3d" class="w-3.5 h-3.5"></i> หมุนกล้อง
                     </button>
                     <button id="btn-mode-drag" class="px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition text-slate-400 hover:text-white">
-                        <i data-lucide="move" class="w-3.5 h-3.5"></i> ลากย้ายกล่อง 3D
+                        <i data-lucide="move" class="w-3.5 h-3.5"></i> ลากย้ายกล่อง
                     </button>
                 </div>
 
@@ -126,10 +126,10 @@
                 <!-- Search Box -->
                 <div class="flex flex-col gap-2 border-b border-slate-700/60 pb-4">
                     <label class="text-xs font-semibold text-cyan-400 flex items-center gap-1.5">
-                        <i data-lucide="search" class="w-3.5 h-3.5"></i> ค้นหาชื่อข้างกล่อง
+                        <i data-lucide="search" class="w-3.5 h-3.5"></i> ค้นหาชื่อกล่องหรือรหัสพิกัด
                     </label>
                     <div class="relative">
-                        <input type="text" id="search-input" placeholder="พิมพ์ชื่อกล่องเพื่อไฮไลต์ 3D..." 
+                        <input type="text" id="search-input" placeholder="พิมพ์ชื่อแฟ้มหรือรหัสพิกัด..." 
                             class="w-full bg-slate-900/80 border border-slate-700 rounded-xl px-3.5 py-2 text-sm text-white focus:outline-none focus:border-cyan-500 pr-8 transition">
                         <button id="search-clear" class="absolute right-2.5 top-2.5 text-slate-400 hover:text-white hidden">
                             <i data-lucide="x" class="w-4 h-4"></i>
@@ -141,7 +141,7 @@
                 <!-- Add Box Form -->
                 <div class="flex flex-col gap-3">
                     <h2 class="text-sm font-semibold text-slate-200 flex items-center gap-2">
-                        <i data-lucide="box" class="w-4 h-4 text-indigo-400"></i> เพิ่มลังแฟ้มลงพาเลท
+                        <i data-lucide="box" class="w-4 h-4 text-indigo-400"></i> เพิ่มลังแฟ้มลงพิกัดคลัง
                     </h2>
                     
                     <div class="flex flex-col gap-1.5">
@@ -152,7 +152,7 @@
 
                     <div class="grid grid-cols-2 gap-2">
                         <div class="flex flex-col gap-1.5">
-                            <label class="text-xs text-slate-400">เลือกตำแหน่ง (Slot)</label>
+                            <label class="text-xs text-slate-400">เลือกช่องบนพาเลท (Slot)</label>
                             <select id="select-slot" class="bg-slate-900/80 border border-slate-700 rounded-xl px-3 py-2 text-sm text-amber-300 focus:outline-none focus:border-indigo-500 transition font-medium">
                                 <option value="0">ช่อง 1 (ซ้ายบน)</option>
                                 <option value="1">ช่อง 2 (ขวาบน)</option>
@@ -161,8 +161,8 @@
                             </select>
                         </div>
                         <div class="flex flex-col gap-1.5">
-                            <label class="text-xs text-slate-400">ชื่อข้างกล่อง</label>
-                            <input type="text" id="input-box-label" placeholder="แฟ้ม 2567/01" 
+                            <label class="text-xs text-slate-400">ชื่อข้างกล่อง / รหัสเอกสาร</label>
+                            <input type="text" id="input-box-label" placeholder="แฟ้มบัญชี 2567" 
                                 class="bg-slate-900/80 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-indigo-500 transition">
                         </div>
                     </div>
@@ -178,20 +178,20 @@
                 </div>
 
                 <div class="text-[11px] text-slate-400 bg-slate-900/40 p-3 rounded-xl border border-slate-800/80 flex flex-col gap-1">
-                    <div class="font-medium text-amber-300 flex items-center gap-1">
-                        <i data-lucide="move" class="w-3.5 h-3.5"></i> วิธีใช้งานลากวาง 3D:
+                    <div class="font-medium text-cyan-300 flex items-center gap-1">
+                        <i data-lucide="info" class="w-3.5 h-3.5"></i> รูปแบบพิกัดคลัง:
                     </div>
-                    <div>• กดปุ่มสลับไปที่ <b>"ลากย้ายกล่อง 3D"</b> ด้านบนขวา</div>
-                    <div>• คลิกค้างที่กล่องบนจอเพื่อลอยย้ายไปลงช่องอื่นหรือพาเลทอื่นได้อิสระ</div>
+                    <div>• แต่ละกล่องจะมีรหัสพิกัดระบุ เช่น <code class="text-amber-300 font-mono">P1-S1-L1</code> (พาเลท, ช่อง, ชั้น)</div>
+                    <div>• สามารถใช้ค้นหาพิกัดเพื่อเดินไปหยิบของจริงได้ทันที</div>
                 </div>
 
             </div>
 
-            <!-- Right Panel: Inventory List & Quick Transfers -->
+            <!-- Right Panel: Inventory List & Coordinates Summary -->
             <div class="md:col-span-7 lg:col-span-8 glass-panel p-5 rounded-2xl shadow-2xl max-h-[40vh] md:max-h-[80vh] overflow-y-auto custom-scrollbar flex flex-col gap-3">
                 <div class="flex justify-between items-center border-b border-slate-700/60 pb-2">
                     <h2 class="text-sm font-semibold text-slate-200 flex items-center gap-2">
-                        <i data-lucide="list" class="w-4 h-4 text-cyan-400"></i> สรุปรายการพาเลทและลังแฟ้ม
+                        <i data-lucide="list" class="w-4 h-4 text-cyan-400"></i> สรุปรายการพิกัดและลังแฟ้ม
                     </h2>
                     <span id="pallet-count-badge" class="text-xs bg-indigo-950 text-indigo-300 border border-indigo-800 px-2.5 py-0.5 rounded-full font-medium">
                         0 พาเลท
@@ -233,7 +233,6 @@
         let pallet3DGroup = new THREE.Group();
         let boxMeshMap = new Map();
 
-        // Mode & Dragging State
         let currentMode = 'rotate'; // 'rotate' or 'drag'
         let isDragging = false;
         let draggedMesh = null;
@@ -277,7 +276,7 @@
                         <span class="text-emerald-400">CLOUD LIVE</span>
                     `;
 
-                    db.collection('pallet_system').doc('current_state')
+                    db.collection('warehouse_system').doc('current_state')
                       .onSnapshot((doc) => {
                           if (doc.exists && doc.data().pallets) {
                               palletsData = doc.data().pallets;
@@ -317,7 +316,7 @@
 
         function saveData() {
             if (isFirebaseLive && db) {
-                db.collection('pallet_system').doc('current_state').set({
+                db.collection('warehouse_system').doc('current_state').set({
                     pallets: palletsData,
                     updatedAt: firebase.firestore.FieldValue.serverTimestamp()
                 }).catch(err => {
@@ -329,12 +328,12 @@
         }
 
         function saveToLocalStorage() {
-            localStorage.setItem('pallet_system_data', JSON.stringify(palletsData));
+            localStorage.setItem('warehouse_system_data', JSON.stringify(palletsData));
             updateAll();
         }
 
         function loadFromLocalStorage() {
-            const saved = localStorage.getItem('pallet_system_data');
+            const saved = localStorage.getItem('warehouse_system_data');
             if (saved) {
                 try {
                     palletsData = JSON.parse(saved);
@@ -414,7 +413,7 @@
             ctx.strokeRect(0, 0, 256, 128);
 
             ctx.fillStyle = '#0f172a';
-            ctx.font = 'bold 22px Prompt, sans-serif';
+            ctx.font = 'bold 20px Prompt, sans-serif';
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
             
@@ -443,13 +442,16 @@
                 palletMesh.position.set(posX, PALLET_HEIGHT / 2, posZ);
                 pallet3DGroup.add(palletMesh);
 
-                // Track stack height per slot (0, 1, 2, 3)
-                const slotHeights = [0, 0, 0, 0];
+                // Calculate layer stack per slot
+                const slotCounts = [0, 0, 0, 0];
 
                 (pallet.boxes || []).forEach((box) => {
                     const slotIdx = box.slot !== undefined ? box.slot : 0;
-                    const layerIdx = slotHeights[slotIdx];
-                    slotHeights[slotIdx]++;
+                    const layerIdx = slotCounts[slotIdx];
+                    slotCounts[slotIdx]++;
+
+                    // Assign Coordinate Code dynamically
+                    box.code = `${pallet.id}-S${slotIdx + 1}-L${layerIdx + 1}`;
 
                     const boxX = posX + LOCAL_SLOT_OFFSETS[slotIdx].x;
                     const boxY = PALLET_HEIGHT + (layerIdx * BOX_HEIGHT) + (BOX_HEIGHT / 2);
@@ -463,6 +465,7 @@
                         boxId: box.id, 
                         palletId: pallet.id, 
                         label: box.label,
+                        code: box.code,
                         originalColor: colorHex,
                         isBox: true
                     };
@@ -521,7 +524,7 @@
             return mesh;
         }
 
-        // --- Drag & Drop 3D Logic ---
+        // Drag & Drop 3D Logic
         function onPointerDown(event) {
             if (currentMode !== 'drag' || event.button !== 0) return;
 
@@ -549,7 +552,7 @@
                     }
 
                     draggedMesh.position.y += 0.5;
-                    showDragToast(`กำลังย้ายกล่อง: ${draggedMesh.userData.label}`);
+                    showDragToast(`กำลังย้าย: ${draggedMesh.userData.label}`);
                 }
             }
         }
@@ -591,7 +594,6 @@
             });
 
             if (closestPallet && minDistance < 3.2) {
-                // Find closest slot (0, 1, 2, or 3) on the target pallet
                 const col = (palletsData.findIndex(p => p.id === closestPallet.id)) % GRID_COLS;
                 const row = Math.floor((palletsData.findIndex(p => p.id === closestPallet.id)) / GRID_COLS);
                 const palletCenterX = (col - 1) * SPACING_X;
@@ -660,10 +662,33 @@
                 controls.update();
             }
 
+            searchPulseTime += 0.05;
+            const searchInput = document.getElementById('search-input');
+            const query = searchInput ? searchInput.value.trim().toLowerCase() : '';
+
+            boxMeshMap.forEach((mesh, boxId) => {
+                if (mesh === draggedMesh) return;
+
+                if (query.length > 0) {
+                    if (highlightedBoxIds.has(boxId)) {
+                        mesh.material.color.setHex(0xfacc15);
+                        mesh.material.opacity = 1.0;
+                    } else {
+                        mesh.material.color.setHex(mesh.userData.originalColor);
+                        mesh.material.opacity = 0.25;
+                    }
+                } else {
+                    mesh.material.color.setHex(mesh.userData.originalColor);
+                    mesh.material.opacity = 1.0;
+                }
+            });
+
             if (renderer && scene && camera) {
                 renderer.render(scene, camera);
             }
         }
+
+        let searchPulseTime = 0;
 
         function updateAll() {
             render3DScene();
@@ -704,16 +729,24 @@
                 if (boxCount === 0) {
                     boxesHTML = `<p class="text-xs text-slate-500 italic py-1">ไม่มีลังบนพาเลทนี้</p>`;
                 } else {
+                    // Recalculate code dynamically for UI list
+                    const slotCounts = [0, 0, 0, 0];
                     boxesHTML = pallet.boxes.map((b) => {
-                        const slotName = (b.slot !== undefined ? (b.slot + 1) : 1);
+                        const slotIdx = b.slot !== undefined ? b.slot : 0;
+                        const layerIdx = slotCounts[slotIdx];
+                        slotCounts[slotIdx]++;
+                        const code = `${pallet.id}-S${slotIdx + 1}-L${layerIdx + 1}`;
+
                         return `
                             <div class="flex justify-between items-center text-xs bg-slate-800/80 px-2.5 py-1.5 rounded-lg border border-slate-700/50">
                                 <div class="flex items-center gap-1.5 truncate mr-1">
                                     <span class="w-2 h-2 rounded-full bg-cyan-400"></span>
-                                    <span class="text-slate-200 truncate" title="${b.label}">${b.label}</span>
+                                    <div class="truncate">
+                                        <span class="text-slate-200 font-medium truncate block" title="${b.label}">${b.label}</span>
+                                        <span class="text-[10px] text-amber-300 font-mono">[${code}]</span>
+                                    </div>
                                 </div>
                                 <div class="flex items-center gap-1.5 shrink-0">
-                                    <span class="text-[10px] text-amber-300 bg-slate-900 px-1.5 py-0.5 rounded border border-slate-700">ช่อง ${slotName}</span>
                                     <button onclick="moveBoxPrompt('${pallet.id}', '${b.id}')" title="ย้ายพาเลท/ช่อง" class="text-cyan-400 hover:text-cyan-300 transition">🔄</button>
                                     <button onclick="removeBox('${pallet.id}', '${b.id}')" title="ลบกล่อง" class="text-rose-400 hover:text-rose-300 transition">✖</button>
                                 </div>
@@ -748,7 +781,7 @@
             const name = prompt("กรุณาระบุชื่อพาเลท / โซนจัดเก็บ:", `พาเลท ${String.fromCharCode(65 + palletsData.length)}`);
             if (!name) return;
 
-            palletsData.push({ id: 'P_' + Date.now(), name: name.trim(), boxes: [] });
+            palletsData.push({ id: 'P' + (palletsData.length + 1), name: name.trim(), boxes: [] });
             saveData();
         }
 
@@ -799,7 +832,7 @@
         }
 
         function moveBoxPrompt(fromPalletId, boxId) {
-            const targetPalletId = prompt("ย้ายไปพาเลทใด? (กรอก ID หรือชื่อพาเลท):\n" + palletsData.map(p => `${p.id} = ${p.name}`).join("\n"));
+            const targetPalletId = prompt("ย้ายไปพาเลทใด? (กรอก ID เช่น P1 หรือชื่อพาเลท):\n" + palletsData.map(p => `${p.id} = ${p.name}`).join("\n"));
             if (!targetPalletId) return;
 
             const targetPallet = palletsData.find(p => p.id === targetPalletId || p.name.includes(targetPalletId));
@@ -811,7 +844,24 @@
             const newSlot = prompt("เลือกช่องวางเป้าหมายบนพาเลทใหม่ (กรอกเลข 1, 2, 3 หรือ 4):", "1");
             const slotVal = Math.max(0, Math.min(3, parseInt(newSlot, 10) - 1 || 0));
 
-            transferBoxToPalletAndSlot(fromPalletId, targetPallet.id, boxId, slotVal);
+            let movedBox = null;
+            const sourcePallet = palletsData.find(p => p.id === fromPalletId);
+            if (sourcePallet && sourcePallet.boxes) {
+                sourcePallet.boxes = sourcePallet.boxes.filter(b => {
+                    if (b.id === boxId) {
+                        movedBox = b;
+                        return false;
+                    }
+                    return true;
+                });
+            }
+
+            if (movedBox) {
+                movedBox.slot = slotVal;
+                if (!targetPallet.boxes) targetPallet.boxes = [];
+                targetPallet.boxes.push(movedBox);
+                saveData();
+            }
         }
 
         function handleSearch() {
@@ -831,8 +881,14 @@
 
                 let matchCount = 0;
                 palletsData.forEach(pallet => {
+                    const slotCounts = [0, 0, 0, 0];
                     (pallet.boxes || []).forEach((box) => {
-                        if (box.label.toLowerCase().includes(query)) {
+                        const slotIdx = box.slot !== undefined ? box.slot : 0;
+                        const layerIdx = slotCounts[slotIdx];
+                        slotCounts[slotIdx]++;
+                        const code = `${pallet.id}-S${slotIdx + 1}-L${layerIdx + 1}`.toLowerCase();
+
+                        if (box.label.toLowerCase().includes(query) || code.includes(query)) {
                             highlightedBoxIds.add(box.id);
                             matchCount++;
 
@@ -842,7 +898,7 @@
                             item.innerHTML = `
                                 <div class="truncate mr-2">
                                     <span class="font-medium text-amber-300">${box.label}</span>
-                                    <span class="text-[10px] text-slate-400 block">${pallet.name} • ช่อง ${box.slot + 1}</span>
+                                    <span class="text-[10px] text-cyan-400 block">${pallet.name} • พิกัด: [${code.toUpperCase()}]</span>
                                 </div>
                                 <span class="text-cyan-400">🎯</span>
                             `;
@@ -852,7 +908,7 @@
                 });
 
                 if (matchCount === 0) {
-                    resultsList.innerHTML = `<p class="text-xs text-slate-400 italic p-1.5 text-center">ไม่พบกล่องที่ตรงกับคำค้นหา</p>`;
+                    resultsList.innerHTML = `<p class="text-xs text-slate-400 italic p-1.5 text-center">ไม่พบพิกัดหรือกล่องที่ตรงกับคำค้นหา</p>`;
                 }
             } else {
                 searchClear.classList.add('hidden');
@@ -897,7 +953,7 @@
             const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(palletsData, null, 2));
             const a = document.createElement('a');
             a.setAttribute("href", dataStr);
-            a.setAttribute("download", `pallet_backup_${new Date().toISOString().slice(0,10)}.json`);
+            a.setAttribute("download", `warehouse_layout_${new Date().toISOString().slice(0,10)}.json`);
             document.body.appendChild(a);
             a.click();
             a.remove();
@@ -926,7 +982,7 @@
         }
 
         function clearAllData() {
-            if (confirm("คุณแน่ใจหรือไม่ที่จะล้างข้อมูลพาเลทและกล่องทั้งหมด?")) {
+            if (confirm("คุณแน่ใจหรือไม่ที่จะล้างข้อมูลคลังทั้งหมด?")) {
                 palletsData = [];
                 saveData();
             }
