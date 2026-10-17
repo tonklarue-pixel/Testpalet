@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>3D Warehouse Management (Realistic Pallet Edition)</title>
+    <title>3D Warehouse (Mobile Easy UI)</title>
     
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -38,15 +38,15 @@
             touch-action: none;
         }
         .clean-glass {
-            background: rgba(11, 19, 38, 0.85);
-            backdrop-filter: blur(16px);
-            -webkit-backdrop-filter: blur(16px);
-            border: 1px solid rgba(255, 255, 255, 0.08);
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+            background: rgba(11, 19, 38, 0.9);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
         }
         .custom-scrollbar::-webkit-scrollbar { width: 4px; }
         .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
-        .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.15); border-radius: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.2); border-radius: 4px; }
     </style>
 </head>
 <body class="relative min-h-screen">
@@ -55,32 +55,32 @@
     <div id="canvas-container"></div>
 
     <!-- Toast Notification -->
-    <div id="drag-toast" class="fixed top-20 left-1/2 -translate-x-1/2 z-50 pointer-events-none transition-all duration-300 opacity-0 transform -translate-y-2">
-        <div class="clean-glass text-white text-xs font-medium px-4 py-2 rounded-full shadow-2xl flex items-center gap-2 border border-indigo-500/30">
-            <span class="w-2 h-2 rounded-full bg-cyan-400 animate-pulse"></span>
+    <div id="drag-toast" class="fixed top-16 left-1/2 -translate-x-1/2 z-50 pointer-events-none transition-all duration-300 opacity-0 transform -translate-y-2">
+        <div class="clean-glass text-white text-xs font-medium px-4 py-2.5 rounded-full shadow-2xl flex items-center gap-2 border border-indigo-500/40">
+            <span class="w-2.5 h-2.5 rounded-full bg-cyan-400 animate-ping"></span>
             <span id="drag-toast-text">กำลังย้ายกล่อง...</span>
         </div>
     </div>
 
-    <!-- Custom Modal Dialog (Prompt Replacer) -->
-    <div id="custom-modal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm hidden opacity-0 transition-opacity duration-200">
-        <div class="clean-glass w-full max-w-sm p-5 rounded-3xl flex flex-col gap-4 border border-indigo-500/20 shadow-2xl scale-95 transition-transform duration-200" id="modal-box">
+    <!-- Custom Modal Dialog -->
+    <div id="custom-modal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md hidden opacity-0 transition-opacity duration-200">
+        <div class="clean-glass w-full max-w-sm p-6 rounded-3xl flex flex-col gap-4 border border-indigo-500/30 shadow-2xl scale-95 transition-transform duration-200" id="modal-box">
             <div class="flex items-center gap-3">
-                <div class="p-2.5 bg-indigo-600/20 rounded-2xl text-indigo-400 border border-indigo-500/30">
-                    <i data-lucide="layer-plus" class="w-5 h-5"></i>
+                <div class="p-3 bg-indigo-600/30 rounded-2xl text-indigo-400 border border-indigo-500/40">
+                    <i data-lucide="layer-plus" class="w-6 h-6"></i>
                 </div>
                 <div>
-                    <h3 class="font-semibold text-sm text-white" id="modal-title">เพิ่มพาเลทใหม่</h3>
-                    <p class="text-[11px] text-slate-400" id="modal-desc">ระบุชื่อพาเลทหรือโซนจัดเก็บในคลัง</p>
+                    <h3 class="font-semibold text-base text-white" id="modal-title">เพิ่มพาเลทใหม่</h3>
+                    <p class="text-xs text-slate-400" id="modal-desc">ระบุชื่อพาเลทหรือโซนจัดเก็บ</p>
                 </div>
             </div>
             
             <input type="text" id="modal-input" placeholder="เช่น พาเลท D (โซน A)" 
-                class="w-full bg-slate-900/80 border border-slate-700/80 rounded-2xl px-4 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 transition">
+                class="w-full bg-slate-900/90 border border-slate-700/80 rounded-2xl px-4 py-3 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 transition">
             
-            <div class="flex gap-2 pt-1">
-                <button id="modal-btn-cancel" class="flex-1 bg-slate-800/80 hover:bg-slate-700 text-slate-300 text-xs font-medium py-2.5 rounded-2xl transition border border-slate-700">ยกเลิก</button>
-                <button id="modal-btn-ok" class="flex-1 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-medium py-2.5 rounded-2xl transition shadow-lg shadow-indigo-600/30">ยืนยัน</button>
+            <div class="flex gap-2.5 pt-1">
+                <button id="modal-btn-cancel" class="flex-1 bg-slate-800/90 hover:bg-slate-700 text-slate-300 text-xs font-semibold py-3 rounded-2xl transition border border-slate-700 active:scale-95">ยกเลิก</button>
+                <button id="modal-btn-ok" class="flex-1 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold py-3 rounded-2xl transition shadow-lg shadow-indigo-600/30 active:scale-95">ยืนยัน</button>
             </div>
         </div>
     </div>
@@ -88,70 +88,76 @@
     <!-- UI Overlay Layer -->
     <div class="relative z-10 p-3 md:p-5 pointer-events-none flex flex-col justify-between h-screen max-w-full">
         
-        <!-- Header -->
-        <div class="flex flex-wrap justify-between items-center gap-3 pointer-events-auto">
-            <div class="clean-glass px-4 py-2.5 rounded-2xl flex items-center gap-3">
+        <!-- Header Controls -->
+        <div class="flex justify-between items-center gap-2 pointer-events-auto">
+            <div class="clean-glass px-3.5 py-2 rounded-2xl flex items-center gap-2.5">
                 <div class="p-2 bg-gradient-to-tr from-indigo-600 to-violet-600 rounded-xl shadow-md">
-                    <i data-lucide="box" class="w-5 h-5 text-white"></i>
+                    <i data-lucide="box" class="w-4 h-4 text-white"></i>
                 </div>
                 <div>
-                    <h1 class="font-semibold text-sm leading-tight text-white">ระบบคลังสินค้า 3D</h1>
-                    <p class="text-[11px] text-slate-400">พิกัดอัตโนมัติ Pallet-Slot-Layer</p>
+                    <h1 class="font-semibold text-xs leading-tight text-white">คลังสินค้า 3D</h1>
+                    <p class="text-[10px] text-slate-400">ระบบพิกัดอัตโนมัติ</p>
                 </div>
             </div>
 
-            <div class="flex items-center gap-2">
-                <!-- Mode Switcher -->
-                <div class="clean-glass p-1 rounded-2xl flex items-center gap-1">
-                    <button id="btn-mode-rotate" class="px-3 py-1.5 rounded-xl text-xs font-medium flex items-center gap-1.5 transition bg-indigo-600 text-white shadow">
-                        <i data-lucide="rotate-3d" class="w-3.5 h-3.5"></i> หมุนกล้อง
-                    </button>
-                    <button id="btn-mode-drag" class="px-3 py-1.5 rounded-xl text-xs font-medium flex items-center gap-1.5 transition text-slate-400 hover:text-white">
-                        <i data-lucide="move" class="w-3.5 h-3.5"></i> ลากย้าย
-                    </button>
-                </div>
-
-                <div id="status-badge" class="clean-glass px-3 py-2 rounded-2xl hidden sm:flex items-center gap-2 text-xs font-medium">
-                    <span class="w-2 h-2 rounded-full bg-amber-400 animate-pulse"></span>
-                    <span class="text-slate-300 text-[11px]">เชื่อมต่อระบบ...</span>
-                </div>
+            <!-- Main Mode Switcher -->
+            <div class="clean-glass p-1 rounded-2xl flex items-center gap-1 shadow-lg">
+                <button id="btn-mode-rotate" class="px-3 py-2 rounded-xl text-xs font-medium flex items-center gap-1.5 transition bg-indigo-600 text-white shadow">
+                    <i data-lucide="rotate-3d" class="w-4 h-4"></i> หมุนกล้อง
+                </button>
+                <button id="btn-mode-drag" class="px-3 py-2 rounded-xl text-xs font-medium flex items-center gap-1.5 transition text-slate-400 hover:text-white">
+                    <i data-lucide="move" class="w-4 h-4"></i> ลากย้าย
+                </button>
             </div>
         </div>
 
-        <!-- Main Controls & Panel -->
-        <div class="grid grid-cols-1 md:grid-cols-12 gap-3 pointer-events-auto items-end pb-1">
+        <!-- Mobile Bottom Drawer Panel -->
+        <div class="pointer-events-auto w-full max-w-md mx-auto">
             
-            <!-- Left Panel: Form & Search -->
-            <div class="md:col-span-5 lg:col-span-4 clean-glass p-4 rounded-3xl flex flex-col gap-3.5 max-h-[45vh] md:max-h-[75vh] overflow-y-auto custom-scrollbar">
+            <div class="clean-glass p-4 rounded-3xl shadow-2xl flex flex-col gap-3 max-h-[50vh] md:max-h-[75vh]">
                 
-                <!-- Search Input -->
-                <div class="flex flex-col gap-1.5">
+                <!-- Tab Switcher (Large Mobile Touch Targets) -->
+                <div class="grid grid-cols-2 gap-1.5 bg-slate-900/80 p-1 rounded-2xl border border-slate-800">
+                    <button id="tab-btn-add" class="py-2.5 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition bg-indigo-600 text-white shadow">
+                        <i data-lucide="plus-circle" class="w-4 h-4"></i> เพิ่มกล่อง
+                    </button>
+                    <button id="tab-btn-list" class="py-2.5 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition text-slate-400 hover:text-white">
+                        <i data-lucide="list" class="w-4 h-4"></i> พิกัดทั้งหมด
+                    </button>
+                </div>
+
+                <!-- TAB 1: Add Form & Search -->
+                <div id="tab-content-add" class="flex flex-col gap-3 overflow-y-auto custom-scrollbar pt-1">
+                    
+                    <!-- Search Input -->
                     <div class="relative">
-                        <input type="text" id="search-input" placeholder="ค้นหาชื่อแฟ้ม หรือรหัสพิกัด (เช่น P1-S1)..." 
-                            class="w-full bg-slate-900/60 border border-slate-700/60 rounded-2xl px-3.5 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 pr-8 transition">
+                        <input type="text" id="search-input" placeholder="🔍 ค้นชื่อกล่อง หรือพิกัด (เช่น P1-S1)..." 
+                            class="w-full bg-slate-900/90 border border-slate-700/80 rounded-2xl px-3.5 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 transition">
                         <button id="search-clear" class="absolute right-3 top-2.5 text-slate-400 hover:text-white hidden">
-                            <i data-lucide="x" class="w-3.5 h-3.5"></i>
+                            <i data-lucide="x" class="w-4 h-4"></i>
                         </button>
                     </div>
                     <div id="search-results-list" class="flex flex-col gap-1 max-h-24 overflow-y-auto custom-scrollbar hidden"></div>
-                </div>
 
-                <!-- Add Form -->
-                <div class="flex flex-col gap-2.5 pt-1 border-t border-slate-800/80">
-                    <h2 class="text-xs font-medium text-slate-300 flex items-center gap-1.5">
-                        <i data-lucide="plus-circle" class="w-3.5 h-3.5 text-indigo-400"></i> เพิ่มกล่องเข้าคลัง
-                    </h2>
-                    
-                    <div class="flex flex-col gap-1">
-                        <label class="text-[10px] text-slate-400">เลือกพาเลท</label>
-                        <select id="select-pallet" class="bg-slate-900/60 border border-slate-700/60 rounded-2xl px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500 transition">
-                        </select>
+                    <!-- Pallet Selection & Add Pallet -->
+                    <div class="grid grid-cols-12 gap-2">
+                        <div class="col-span-8 flex flex-col gap-1">
+                            <label class="text-[10px] text-slate-400 font-medium">เลือกพาเลท</label>
+                            <select id="select-pallet" class="bg-slate-900/90 border border-slate-700/80 rounded-2xl px-3 py-2.5 text-xs text-white focus:outline-none focus:border-indigo-500 transition font-medium">
+                            </select>
+                        </div>
+                        <div class="col-span-4 flex flex-col justify-end">
+                            <button id="btn-add-pallet" class="bg-slate-800 hover:bg-slate-700 active:scale-95 text-cyan-400 text-xs font-semibold py-2.5 px-2 rounded-2xl border border-slate-700/80 flex items-center justify-center gap-1 transition shadow-md">
+                                <i data-lucide="layer-plus" class="w-4 h-4"></i> +พาเลท
+                            </button>
+                        </div>
                     </div>
 
+                    <!-- Slot & Box Label -->
                     <div class="grid grid-cols-2 gap-2">
                         <div class="flex flex-col gap-1">
-                            <label class="text-[10px] text-slate-400">ตำแหน่ง (Slot)</label>
-                            <select id="select-slot" class="bg-slate-900/60 border border-slate-700/60 rounded-2xl px-3 py-2 text-xs text-amber-300 font-medium focus:outline-none focus:border-indigo-500 transition">
+                            <label class="text-[10px] text-slate-400 font-medium">ช่องวาง (Slot)</label>
+                            <select id="select-slot" class="bg-slate-900/90 border border-slate-700/80 rounded-2xl px-3 py-2.5 text-xs text-amber-300 font-semibold focus:outline-none focus:border-indigo-500 transition">
                                 <option value="0">ช่อง 1 (ซ้ายบน)</option>
                                 <option value="1">ช่อง 2 (ขวาบน)</option>
                                 <option value="2">ช่อง 3 (ซ้ายล่าง)</option>
@@ -159,46 +165,35 @@
                             </select>
                         </div>
                         <div class="flex flex-col gap-1">
-                            <label class="text-[10px] text-slate-400">ชื่อข้างกล่อง</label>
+                            <label class="text-[10px] text-slate-400 font-medium">ชื่อข้างกล่อง</label>
                             <input type="text" id="input-box-label" placeholder="แฟ้มบัญชี 67" 
-                                class="bg-slate-900/60 border border-slate-700/60 rounded-2xl px-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 transition">
+                                class="bg-slate-900/90 border border-slate-700/80 rounded-2xl px-3 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 transition">
                         </div>
                     </div>
 
-                    <div class="grid grid-cols-2 gap-2 pt-1">
-                        <button id="btn-add-box" class="bg-indigo-600 hover:bg-indigo-500 active:scale-95 text-white text-xs font-medium py-2 px-3 rounded-2xl flex items-center justify-center gap-1.5 transition shadow-lg shadow-indigo-600/20">
-                            <i data-lucide="plus" class="w-3.5 h-3.5"></i> เพิ่มกล่อง
-                        </button>
-                        <button id="btn-add-pallet" class="bg-slate-800/80 hover:bg-slate-700 text-slate-200 text-xs font-medium py-2 px-3 rounded-2xl border border-slate-700/60 flex items-center justify-center gap-1.5 transition">
-                            <i data-lucide="layer-plus" class="w-3.5 h-3.5 text-cyan-400"></i> เพิ่มพาเลท
-                        </button>
+                    <!-- Add Box Main Button -->
+                    <button id="btn-add-box" class="w-full bg-indigo-600 hover:bg-indigo-500 active:scale-95 text-white text-xs font-semibold py-3 rounded-2xl flex items-center justify-center gap-2 transition shadow-lg shadow-indigo-600/30">
+                        <i data-lucide="plus" class="w-4 h-4"></i> เพิ่มกล่องเข้าพิกัดคลัง
+                    </button>
+                </div>
+
+                <!-- TAB 2: Coordinates & Pallet List -->
+                <div id="tab-content-list" class="flex-col gap-2 overflow-y-auto custom-scrollbar hidden pt-1">
+                    <div id="pallet-list-container" class="flex flex-col gap-2.5">
                     </div>
                 </div>
 
-                <!-- Footer Quick Actions -->
+                <!-- Quick Action Bar -->
                 <div class="flex justify-between items-center pt-2 border-t border-slate-800/80 text-xs text-slate-400">
-                    <span id="pallet-count-badge" class="font-medium text-slate-300">0 พาเลท</span>
-                    <div class="flex items-center gap-1">
-                        <button id="btn-export" title="สำรองข้อมูล JSON" class="p-2 hover:bg-slate-800 rounded-xl transition text-slate-300"><i data-lucide="download" class="w-3.5 h-3.5"></i></button>
-                        <button id="btn-import-trigger" title="นำเข้าข้อมูล" class="p-2 hover:bg-slate-800 rounded-xl transition text-slate-300"><i data-lucide="upload" class="w-3.5 h-3.5"></i></button>
+                    <span id="pallet-count-badge" class="font-semibold text-slate-300">0 พาเลท</span>
+                    <div class="flex items-center gap-1.5">
+                        <button id="btn-export" title="สำรองข้อมูล" class="p-2 hover:bg-slate-800 rounded-xl transition text-slate-300"><i data-lucide="download" class="w-4 h-4"></i></button>
+                        <button id="btn-import-trigger" title="นำเข้าข้อมูล" class="p-2 hover:bg-slate-800 rounded-xl transition text-slate-300"><i data-lucide="upload" class="w-4 h-4"></i></button>
                         <input type="file" id="file-import" accept=".json" class="hidden">
-                        <button id="btn-clear-all" title="ล้างทั้งหมด" class="p-2 hover:bg-rose-900/30 rounded-xl transition text-rose-400"><i data-lucide="trash-2" class="w-3.5 h-3.5"></i></button>
+                        <button id="btn-clear-all" title="ล้างทั้งหมด" class="p-2 hover:bg-rose-900/40 rounded-xl transition text-rose-400"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
                     </div>
                 </div>
 
-            </div>
-
-            <!-- Right Panel: Coordinate Summary -->
-            <div class="md:col-span-7 lg:col-span-8 clean-glass p-4 rounded-3xl shadow-2xl max-h-[35vh] md:max-h-[75vh] overflow-y-auto custom-scrollbar flex flex-col gap-2.5">
-                <div class="flex justify-between items-center border-b border-slate-800/80 pb-2">
-                    <h2 class="text-xs font-medium text-slate-300 flex items-center gap-1.5">
-                        <i data-lucide="map-pin" class="w-3.5 h-3.5 text-cyan-400"></i> รายการพิกัดและกล่องทั้งหมด
-                    </h2>
-                    <span class="text-[10px] text-slate-400">คลิกตา 👁️ เพื่อซูมดูพาเลท</span>
-                </div>
-
-                <div id="pallet-list-container" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5 pt-0.5">
-                </div>
             </div>
 
         </div>
@@ -303,19 +298,11 @@
         }
 
         function initFirebase() {
-            const statusBadge = document.getElementById('status-badge');
             try {
                 if (typeof firebase !== 'undefined' && !firebase.apps.length) {
                     firebase.initializeApp(firebaseConfig);
                     db = firebase.firestore();
                     isFirebaseLive = true;
-                    
-                    if (statusBadge) {
-                        statusBadge.innerHTML = `
-                            <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
-                            <span class="text-slate-200 text-[11px]">Cloud Live</span>
-                        `;
-                    }
 
                     db.collection('warehouse_system').doc('current_state')
                       .onSnapshot((doc) => {
@@ -338,13 +325,6 @@
 
         function enableLocalStorageFallback() {
             isFirebaseLive = false;
-            const statusBadge = document.getElementById('status-badge');
-            if (statusBadge) {
-                statusBadge.innerHTML = `
-                    <span class="w-2 h-2 rounded-full bg-amber-400"></span>
-                    <span class="text-slate-200 text-[11px]">Local Mode</span>
-                `;
-            }
             loadFromLocalStorage();
         }
 
@@ -411,7 +391,6 @@
             raycaster = new THREE.Raycaster();
             mouse = new THREE.Vector2();
 
-            // Realistic Lighting Setup
             const hemiLight = new THREE.HemisphereLight(0xffffff, 0x1e293b, 0.85);
             hemiLight.position.set(0, 50, 0);
             scene.add(hemiLight);
@@ -516,18 +495,16 @@
             });
         }
 
-        // Realistic Pallet Model Construction
         function createPalletMesh(w, h, l) {
             const group = new THREE.Group();
             
-            const woodMat = new THREE.MeshLambertMaterial({ color: 0xd97706 }); // Pine wood color
-            const blockMat = new THREE.MeshLambertMaterial({ color: 0xb45309 }); // Darker wood blocks
+            const woodMat = new THREE.MeshLambertMaterial({ color: 0xd97706 });
+            const blockMat = new THREE.MeshLambertMaterial({ color: 0xb45309 });
 
             const topPlankThickness = 0.08;
             const bottomPlankThickness = 0.06;
             const blockHeight = h - topPlankThickness - bottomPlankThickness;
 
-            // 1. Top Deck Planks (5 Boards)
             const topPlankCount = 5;
             const topPlankWidth = (w - 0.2) / topPlankCount;
             for (let i = 0; i < topPlankCount; i++) {
@@ -538,7 +515,6 @@
                 group.add(plank);
             }
 
-            // 2. Center & Side Support Blocks (9 Blocks)
             const blockSize = 0.35;
             const xPositions = [-w / 2 + blockSize / 2 + 0.1, 0, w / 2 - blockSize / 2 - 0.1];
             const zPositions = [-l / 2 + blockSize / 2 + 0.1, 0, l / 2 - blockSize / 2 - 0.1];
@@ -552,7 +528,6 @@
                 });
             });
 
-            // 3. Bottom Base Planks (3 Boards)
             const bottomPlankWidth = 0.45;
             xPositions.forEach(x => {
                 const bPlankGeo = new THREE.BoxGeometry(bottomPlankWidth, bottomPlankThickness, l);
@@ -561,7 +536,6 @@
                 group.add(bPlank);
             });
 
-            // 4. Ground Contact Shadow Base
             const shadowGeo = new THREE.PlaneGeometry(w + 0.2, l + 0.2);
             const shadowMat = new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.2 });
             const shadow = new THREE.Mesh(shadowGeo, shadowMat);
@@ -755,10 +729,10 @@
 
             palletsData.forEach((pallet) => {
                 const card = document.createElement('div');
-                card.className = "bg-slate-900/50 border border-slate-800/80 rounded-2xl p-3 flex flex-col gap-2 transition hover:border-slate-700";
+                card.className = "bg-slate-900/60 border border-slate-800/80 rounded-2xl p-3 flex flex-col gap-2.5 transition";
 
                 const boxCount = pallet.boxes?.length || 0;
-                let boxesHTML = boxCount === 0 ? `<p class="text-[11px] text-slate-500 italic py-1">ไม่มีลังในพาเลทนี้</p>` : '';
+                let boxesHTML = boxCount === 0 ? `<p class="text-xs text-slate-500 italic py-1">ไม่มีลังในพาเลทนี้</p>` : '';
 
                 if (boxCount > 0) {
                     const slotCounts = [0, 0, 0, 0];
@@ -768,14 +742,14 @@
                         slotCounts[slotIdx]++;
 
                         return `
-                            <div class="flex justify-between items-center text-xs bg-slate-900/80 px-2.5 py-1.5 rounded-xl border border-slate-800">
-                                <div class="truncate mr-1">
-                                    <span class="text-slate-200 font-medium truncate block text-[11px]">${b.label}</span>
-                                    <span class="text-[10px] text-amber-400 font-mono">[${code}]</span>
+                            <div class="flex justify-between items-center bg-slate-900/90 px-3 py-2 rounded-xl border border-slate-800">
+                                <div class="truncate mr-2">
+                                    <span class="text-slate-200 font-semibold text-xs truncate block">${b.label}</span>
+                                    <span class="text-[10px] text-amber-400 font-mono font-medium">[${code}]</span>
                                 </div>
-                                <div class="flex items-center gap-1 shrink-0">
-                                    <button onclick="moveBoxPrompt('${pallet.id}', '${b.id}')" class="text-indigo-400 hover:text-indigo-300 p-1"><i data-lucide="repeat" class="w-3.5 h-3.5"></i></button>
-                                    <button onclick="removeBox('${pallet.id}', '${b.id}')" class="text-rose-400 hover:text-rose-300 p-1"><i data-lucide="x" class="w-3.5 h-3.5"></i></button>
+                                <div class="flex items-center gap-1.5 shrink-0">
+                                    <button onclick="moveBoxPrompt('${pallet.id}', '${b.id}')" class="bg-indigo-950/60 text-indigo-400 hover:text-indigo-300 p-2 rounded-lg border border-indigo-800/40 active:scale-90"><i data-lucide="repeat" class="w-4 h-4"></i></button>
+                                    <button onclick="removeBox('${pallet.id}', '${b.id}')" class="bg-rose-950/60 text-rose-400 hover:text-rose-300 p-2 rounded-lg border border-rose-800/40 active:scale-90"><i data-lucide="x" class="w-4 h-4"></i></button>
                                 </div>
                             </div>
                         `;
@@ -785,21 +759,44 @@
                 card.innerHTML = `
                     <div class="flex justify-between items-center border-b border-slate-800/80 pb-2">
                         <div>
-                            <h3 class="text-xs font-semibold text-slate-200">${pallet.name}</h3>
-                            <p class="text-[10px] text-slate-400">${boxCount} ลังเอกสาร</p>
+                            <h3 class="text-xs font-bold text-slate-100">${pallet.name}</h3>
+                            <p class="text-[10px] text-slate-400 font-medium">${boxCount} ลังเอกสาร</p>
                         </div>
                         <div class="flex items-center gap-1">
-                            <button onclick="focusPallet('${pallet.id}')" class="p-1.5 text-slate-400 hover:text-indigo-400 transition"><i data-lucide="eye" class="w-3.5 h-3.5"></i></button>
-                            <button onclick="removePallet('${pallet.id}')" class="p-1.5 text-slate-400 hover:text-rose-400 transition"><i data-lucide="trash" class="w-3.5 h-3.5"></i></button>
+                            <button onclick="focusPallet('${pallet.id}')" class="p-2 text-slate-400 hover:text-indigo-400 active:scale-90 transition"><i data-lucide="eye" class="w-4.5 h-4.5"></i></button>
+                            <button onclick="removePallet('${pallet.id}')" class="p-2 text-slate-400 hover:text-rose-400 active:scale-90 transition"><i data-lucide="trash" class="w-4.5 h-4.5"></i></button>
                         </div>
                     </div>
-                    <div class="flex flex-col gap-1.5 max-h-28 overflow-y-auto custom-scrollbar pr-0.5">
+                    <div class="flex flex-col gap-2 max-h-36 overflow-y-auto custom-scrollbar pr-0.5">
                         ${boxesHTML}
                     </div>
                 `;
                 container.appendChild(card);
             });
             renderIcons();
+        }
+
+        function switchTab(tab) {
+            const btnAdd = document.getElementById('tab-btn-add');
+            const btnList = document.getElementById('tab-btn-list');
+            const contentAdd = document.getElementById('tab-content-add');
+            const contentList = document.getElementById('tab-content-list');
+
+            if (tab === 'add') {
+                btnAdd.className = "py-2.5 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition bg-indigo-600 text-white shadow";
+                btnList.className = "py-2.5 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition text-slate-400 hover:text-white";
+                contentAdd.classList.remove('hidden');
+                contentAdd.classList.add('flex');
+                contentList.classList.add('hidden');
+                contentList.classList.remove('flex');
+            } else {
+                btnList.className = "py-2.5 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition bg-indigo-600 text-white shadow";
+                btnAdd.className = "py-2.5 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition text-slate-400 hover:text-white";
+                contentList.classList.remove('hidden');
+                contentList.classList.add('flex');
+                contentAdd.classList.add('hidden');
+                contentAdd.classList.remove('flex');
+            }
         }
 
         function addPallet() {
@@ -880,14 +877,14 @@
                             highlightedBoxIds.add(box.id);
                             match++;
                             const item = document.createElement('div');
-                            item.className = "flex justify-between items-center bg-slate-900/90 hover:bg-slate-800 px-3 py-1.5 rounded-xl text-xs cursor-pointer transition border border-slate-800";
+                            item.className = "flex justify-between items-center bg-slate-900/90 hover:bg-slate-800 px-3 py-2 rounded-xl text-xs cursor-pointer transition border border-slate-800";
                             item.onclick = () => focusPallet(pallet.id);
-                            item.innerHTML = `<span class="text-amber-300 font-medium">${box.label} <span class="text-[10px] text-cyan-400">[${code.toUpperCase()}]</span></span><i data-lucide="target" class="w-3.5 h-3.5 text-indigo-400"></i>`;
+                            item.innerHTML = `<span class="text-amber-300 font-semibold">${box.label} <span class="text-[10px] text-cyan-400 font-mono">[${code.toUpperCase()}]</span></span><i data-lucide="target" class="w-4 h-4 text-indigo-400"></i>`;
                             resultsList.appendChild(item);
                         }
                     });
                 });
-                if (match === 0) resultsList.innerHTML = `<p class="text-[11px] text-slate-500 italic p-1 text-center">ไม่พบผลการค้นหา</p>`;
+                if (match === 0) resultsList.innerHTML = `<p class="text-xs text-slate-500 italic p-1 text-center">ไม่พบผลการค้นหา</p>`;
             } else {
                 searchClear.classList.add('hidden');
                 resultsList.classList.add('hidden');
@@ -936,18 +933,21 @@
             const btnD = document.getElementById('btn-mode-drag');
             if (mode === 'rotate') {
                 controls.enabled = true;
-                btnR.className = "px-3 py-1.5 rounded-xl text-xs font-medium flex items-center gap-1.5 transition bg-indigo-600 text-white shadow";
-                btnD.className = "px-3 py-1.5 rounded-xl text-xs font-medium flex items-center gap-1.5 transition text-slate-400 hover:text-white";
+                btnR.className = "px-3 py-2 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition bg-indigo-600 text-white shadow";
+                btnD.className = "px-3 py-2 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition text-slate-400 hover:text-white";
             } else {
                 controls.enabled = false;
-                btnD.className = "px-3 py-1.5 rounded-xl text-xs font-medium flex items-center gap-1.5 transition bg-indigo-600 text-white shadow";
-                btnR.className = "px-3 py-1.5 rounded-xl text-xs font-medium flex items-center gap-1.5 transition text-slate-400 hover:text-white";
+                btnD.className = "px-3 py-2 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition bg-indigo-600 text-white shadow";
+                btnR.className = "px-3 py-2 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition text-slate-400 hover:text-white";
             }
         }
 
         document.addEventListener('DOMContentLoaded', () => {
             init3D();
             initFirebase();
+
+            document.getElementById('tab-btn-add').addEventListener('click', () => switchTab('add'));
+            document.getElementById('tab-btn-list').addEventListener('click', () => switchTab('list'));
 
             document.getElementById('btn-mode-rotate').addEventListener('click', () => setMode('rotate'));
             document.getElementById('btn-mode-drag').addEventListener('click', () => setMode('drag'));
