@@ -1,27 +1,212 @@
 <!DOCTYPE html>
-<html lang="th" class="h-full bg-slate-950 text-slate-100 select-none">
+<html lang="th">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>3D Pallet Studio Cloud Edition</title>
-    <!-- Tailwind CSS -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>3D Warehouse (Mobile Easy UI)</title>
+    
+    <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Font Awesome Icons -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <!-- Google Fonts -->
-    <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
-    <!-- Three.js and OrbitControls -->
+    
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    
+    <!-- Three.js, OrbitControls & GSAP -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
-    
-    <!-- Firebase SDK (v9 Moduled) -->
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-        import { getFirestore, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
 
-        // ========================================================
-        // 🔑 Firebase Config (ใส่ให้เรียบร้อยแล้ว)
-        // ========================================================
+    <!-- Firebase SDK v9 (Compat) -->
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600&display=swap');
+        * { touch-action: manipulation; box-sizing: border-box; }
+        body {
+            font-family: 'Prompt', sans-serif;
+            margin: 0; padding: 0;
+            overflow: hidden;
+            background-color: #070d1b;
+            color: #f1f5f9;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+        #canvas-container {
+            width: 100vw; height: 100vh;
+            position: absolute; top: 0; left: 0; z-index: 1;
+            touch-action: none;
+        }
+        .clean-glass {
+            background: rgba(11, 19, 38, 0.9);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+        }
+        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.2); border-radius: 4px; }
+    </style>
+</head>
+<body class="relative min-h-screen">
+
+    <!-- 3D Canvas Container -->
+    <div id="canvas-container"></div>
+
+    <!-- Toast Notification -->
+    <div id="drag-toast" class="fixed top-16 left-1/2 -translate-x-1/2 z-50 pointer-events-none transition-all duration-300 opacity-0 transform -translate-y-2">
+        <div class="clean-glass text-white text-xs font-medium px-4 py-2.5 rounded-full shadow-2xl flex items-center gap-2 border border-indigo-500/40">
+            <span class="w-2.5 h-2.5 rounded-full bg-cyan-400 animate-ping"></span>
+            <span id="drag-toast-text">กำลังย้ายกล่อง...</span>
+        </div>
+    </div>
+
+    <!-- Custom Modal Dialog -->
+    <div id="custom-modal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md hidden opacity-0 transition-opacity duration-200">
+        <div class="clean-glass w-full max-w-sm p-6 rounded-3xl flex flex-col gap-4 border border-indigo-500/30 shadow-2xl scale-95 transition-transform duration-200" id="modal-box">
+            <div class="flex items-center gap-3">
+                <div class="p-3 bg-indigo-600/30 rounded-2xl text-indigo-400 border border-indigo-500/40">
+                    <i data-lucide="layer-plus" class="w-6 h-6"></i>
+                </div>
+                <div>
+                    <h3 class="font-semibold text-base text-white" id="modal-title">เพิ่มพาเลทใหม่</h3>
+                    <p class="text-xs text-slate-400" id="modal-desc">ระบุชื่อพาเลทหรือโซนจัดเก็บ</p>
+                </div>
+            </div>
+            
+            <input type="text" id="modal-input" placeholder="เช่น พาเลท D (โซน A)" 
+                class="w-full bg-slate-900/90 border border-slate-700/80 rounded-2xl px-4 py-3 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 transition">
+            
+            <div class="flex gap-2.5 pt-1">
+                <button id="modal-btn-cancel" class="flex-1 bg-slate-800/90 hover:bg-slate-700 text-slate-300 text-xs font-semibold py-3 rounded-2xl transition border border-slate-700 active:scale-95">ยกเลิก</button>
+                <button id="modal-btn-ok" class="flex-1 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold py-3 rounded-2xl transition shadow-lg shadow-indigo-600/30 active:scale-95">ยืนยัน</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- UI Overlay Layer -->
+    <div class="relative z-10 p-3 md:p-5 pointer-events-none flex flex-col justify-between h-screen max-w-full">
+        
+        <!-- Header Controls -->
+        <div class="flex justify-between items-center gap-2 pointer-events-auto">
+            <div class="clean-glass px-3.5 py-2 rounded-2xl flex items-center gap-2.5">
+                <div class="p-2 bg-gradient-to-tr from-indigo-600 to-violet-600 rounded-xl shadow-md">
+                    <i data-lucide="box" class="w-4 h-4 text-white"></i>
+                </div>
+                <div>
+                    <h1 class="font-semibold text-xs leading-tight text-white">คลังสินค้า 3D</h1>
+                    <p class="text-[10px] text-slate-400">ระบบพิกัดอัตโนมัติ</p>
+                </div>
+            </div>
+
+            <!-- Main Mode Switcher -->
+            <div class="clean-glass p-1 rounded-2xl flex items-center gap-1 shadow-lg">
+                <button id="btn-mode-rotate" class="px-3 py-2 rounded-xl text-xs font-medium flex items-center gap-1.5 transition bg-indigo-600 text-white shadow">
+                    <i data-lucide="rotate-3d" class="w-4 h-4"></i> หมุนกล้อง
+                </button>
+                <button id="btn-mode-drag" class="px-3 py-2 rounded-xl text-xs font-medium flex items-center gap-1.5 transition text-slate-400 hover:text-white">
+                    <i data-lucide="move" class="w-4 h-4"></i> ลากย้าย
+                </button>
+            </div>
+        </div>
+
+        <!-- Mobile Bottom Drawer Panel -->
+        <div class="pointer-events-auto w-full max-w-md mx-auto">
+            
+            <div class="clean-glass p-4 rounded-3xl shadow-2xl flex flex-col gap-3 max-h-[50vh] md:max-h-[75vh]">
+                
+                <!-- Tab Switcher (Large Mobile Touch Targets) -->
+                <div class="grid grid-cols-2 gap-1.5 bg-slate-900/80 p-1 rounded-2xl border border-slate-800">
+                    <button id="tab-btn-add" class="py-2.5 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition bg-indigo-600 text-white shadow">
+                        <i data-lucide="plus-circle" class="w-4 h-4"></i> เพิ่มกล่อง
+                    </button>
+                    <button id="tab-btn-list" class="py-2.5 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition text-slate-400 hover:text-white">
+                        <i data-lucide="list" class="w-4 h-4"></i> พิกัดทั้งหมด
+                    </button>
+                </div>
+
+                <!-- TAB 1: Add Form & Search -->
+                <div id="tab-content-add" class="flex flex-col gap-3 overflow-y-auto custom-scrollbar pt-1">
+                    
+                    <!-- Search Input -->
+                    <div class="relative">
+                        <input type="text" id="search-input" placeholder="🔍 ค้นชื่อกล่อง หรือพิกัด (เช่น P1-S1)..." 
+                            class="w-full bg-slate-900/90 border border-slate-700/80 rounded-2xl px-3.5 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 transition">
+                        <button id="search-clear" class="absolute right-3 top-2.5 text-slate-400 hover:text-white hidden">
+                            <i data-lucide="x" class="w-4 h-4"></i>
+                        </button>
+                    </div>
+                    <div id="search-results-list" class="flex flex-col gap-1 max-h-24 overflow-y-auto custom-scrollbar hidden"></div>
+
+                    <!-- Pallet Selection & Add Pallet -->
+                    <div class="grid grid-cols-12 gap-2">
+                        <div class="col-span-8 flex flex-col gap-1">
+                            <label class="text-[10px] text-slate-400 font-medium">เลือกพาเลท</label>
+                            <select id="select-pallet" class="bg-slate-900/90 border border-slate-700/80 rounded-2xl px-3 py-2.5 text-xs text-white focus:outline-none focus:border-indigo-500 transition font-medium">
+                            </select>
+                        </div>
+                        <div class="col-span-4 flex flex-col justify-end">
+                            <button id="btn-add-pallet" class="bg-slate-800 hover:bg-slate-700 active:scale-95 text-cyan-400 text-xs font-semibold py-2.5 px-2 rounded-2xl border border-slate-700/80 flex items-center justify-center gap-1 transition shadow-md">
+                                <i data-lucide="layer-plus" class="w-4 h-4"></i> +พาเลท
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Slot & Box Label -->
+                    <div class="grid grid-cols-2 gap-2">
+                        <div class="flex flex-col gap-1">
+                            <label class="text-[10px] text-slate-400 font-medium">ช่องวาง (Slot)</label>
+                            <select id="select-slot" class="bg-slate-900/90 border border-slate-700/80 rounded-2xl px-3 py-2.5 text-xs text-amber-300 font-semibold focus:outline-none focus:border-indigo-500 transition">
+                                <option value="0">ช่อง 1 (ซ้ายบน)</option>
+                                <option value="1">ช่อง 2 (ขวาบน)</option>
+                                <option value="2">ช่อง 3 (ซ้ายล่าง)</option>
+                                <option value="3">ช่อง 4 (ขวาล่าง)</option>
+                            </select>
+                        </div>
+                        <div class="flex flex-col gap-1">
+                            <label class="text-[10px] text-slate-400 font-medium">ชื่อข้างกล่อง</label>
+                            <input type="text" id="input-box-label" placeholder="แฟ้มบัญชี 67" 
+                                class="bg-slate-900/90 border border-slate-700/80 rounded-2xl px-3 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 transition">
+                        </div>
+                    </div>
+
+                    <!-- Add Box Main Button -->
+                    <button id="btn-add-box" class="w-full bg-indigo-600 hover:bg-indigo-500 active:scale-95 text-white text-xs font-semibold py-3 rounded-2xl flex items-center justify-center gap-2 transition shadow-lg shadow-indigo-600/30">
+                        <i data-lucide="plus" class="w-4 h-4"></i> เพิ่มกล่องเข้าพิกัดคลัง
+                    </button>
+                </div>
+
+                <!-- TAB 2: Coordinates & Pallet List -->
+                <div id="tab-content-list" class="flex-col gap-2 overflow-y-auto custom-scrollbar hidden pt-1">
+                    <div id="pallet-list-container" class="flex flex-col gap-2.5">
+                    </div>
+                </div>
+
+                <!-- Quick Action Bar -->
+                <div class="flex justify-between items-center pt-2 border-t border-slate-800/80 text-xs text-slate-400">
+                    <span id="pallet-count-badge" class="font-semibold text-slate-300">0 พาเลท</span>
+                    <div class="flex items-center gap-1.5">
+                        <button id="btn-export" title="สำรองข้อมูล" class="p-2 hover:bg-slate-800 rounded-xl transition text-slate-300"><i data-lucide="download" class="w-4 h-4"></i></button>
+                        <button id="btn-import-trigger" title="นำเข้าข้อมูล" class="p-2 hover:bg-slate-800 rounded-xl transition text-slate-300"><i data-lucide="upload" class="w-4 h-4"></i></button>
+                        <input type="file" id="file-import" accept=".json" class="hidden">
+                        <button id="btn-clear-all" title="ล้างทั้งหมด" class="p-2 hover:bg-rose-900/40 rounded-xl transition text-rose-400"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
+                    </div>
+                </div>
+
+            </div>
+
+        </div>
+    </div>
+
+    <!-- Main Logic Script -->
+    <script>
+        function renderIcons() {
+            if (typeof lucide !== 'undefined' && lucide.createIcons) {
+                lucide.createIcons();
+            }
+        }
+
         const firebaseConfig = {
             apiKey: "AIzaSyBX_HkxQttRGlZ81UaE3fsWtJLQb9MBQqw",
             authDomain: "gen-lang-client-0163925046.firebaseapp.com",
@@ -31,600 +216,757 @@
             appId: "1:965044714461:web:ae3b0baf227e4b03975434",
             measurementId: "G-EQDGSMGTFJ"
         };
-        // ========================================================
 
         let db = null;
-        let isOnline = false;
+        let isFirebaseLive = false;
+        let palletsData = [];
+        let highlightedBoxIds = new Set();
+        let textureCache = new Map();
 
-        try {
-            if (firebaseConfig.apiKey !== "YOUR_API_KEY") {
-                const app = initializeApp(firebaseConfig);
-                db = getFirestore(app);
-                isOnline = true;
+        let scene, camera, renderer, controls, raycaster, mouse;
+        let pallet3DGroup = new THREE.Group();
+        let boxMeshMap = new Map();
+
+        let currentMode = 'rotate';
+        let isDragging = false;
+        let draggedMesh = null;
+        let dragPlane = new THREE.Plane();
+        let planeIntersect = new THREE.Vector3();
+        let dragOffset = new THREE.Vector3();
+        let originalBoxPosition = new THREE.Vector3();
+
+        const PALLET_WIDTH = 3.6;
+        const PALLET_LENGTH = 3.6;
+        const PALLET_HEIGHT = 0.45;
+        const BOX_WIDTH = 1.6;
+        const BOX_LENGTH = 1.6;
+        const BOX_HEIGHT = 1.2;
+        const BOX_GAP = 0.15;
+        const GRID_COLS = 3;
+        const SPACING_X = 5.5;
+        const SPACING_Z = 5.5;
+
+        const LOCAL_SLOT_OFFSETS = [
+            { x: -(BOX_WIDTH / 2 + BOX_GAP / 2), z: -(BOX_LENGTH / 2 + BOX_GAP / 2) },
+            { x:  (BOX_WIDTH / 2 + BOX_GAP / 2), z: -(BOX_LENGTH / 2 + BOX_GAP / 2) },
+            { x: -(BOX_WIDTH / 2 + BOX_GAP / 2), z:  (BOX_LENGTH / 2 + BOX_GAP / 2) },
+            { x:  (BOX_WIDTH / 2 + BOX_GAP / 2), z:  (BOX_LENGTH / 2 + BOX_GAP / 2) }
+        ];
+
+        const LAYER_COLORS = [
+            0x3b82f6, 0x10b981, 0xf59e0b, 0x8b5cf6, 0xec4899, 0x06b6d4
+        ];
+
+        function showCustomPrompt(title, desc, defaultValue, callback) {
+            const modal = document.getElementById('custom-modal');
+            const modalBox = document.getElementById('modal-box');
+            const titleEl = document.getElementById('modal-title');
+            const descEl = document.getElementById('modal-desc');
+            const inputEl = document.getElementById('modal-input');
+            const btnOk = document.getElementById('modal-btn-ok');
+            const btnCancel = document.getElementById('modal-btn-cancel');
+
+            titleEl.textContent = title;
+            descEl.textContent = desc;
+            inputEl.value = defaultValue;
+
+            modal.classList.remove('hidden');
+            setTimeout(() => {
+                modal.classList.remove('opacity-0');
+                modalBox.classList.remove('scale-95');
+                inputEl.focus();
+                inputEl.select();
+            }, 10);
+
+            function closeModel(result) {
+                modal.classList.add('opacity-0');
+                modalBox.classList.add('scale-95');
+                setTimeout(() => {
+                    modal.classList.add('hidden');
+                    btnOk.onclick = null;
+                    btnCancel.onclick = null;
+                    inputEl.onkeypress = null;
+                    if (callback) callback(result);
+                }, 200);
             }
-        } catch (e) { console.error("Firebase Init Error:", e); }
 
-        window.CloudDB = {
-            enabled: isOnline,
-            async save(data) {
-                if (!isOnline) {
-                    localStorage.setItem('pallet_cloud_backup', JSON.stringify(data));
-                    return;
+            btnOk.onclick = () => closeModel(inputEl.value.trim());
+            btnCancel.onclick = () => closeModel(null);
+            inputEl.onkeypress = (e) => {
+                if (e.key === 'Enter') closeModel(inputEl.value.trim());
+            };
+        }
+
+        function initFirebase() {
+            try {
+                if (typeof firebase !== 'undefined' && !firebase.apps.length) {
+                    firebase.initializeApp(firebaseConfig);
+                    db = firebase.firestore();
+                    isFirebaseLive = true;
+
+                    db.collection('warehouse_system').doc('current_state')
+                      .onSnapshot((doc) => {
+                          if (doc.exists && doc.data().pallets) {
+                              palletsData = doc.data().pallets;
+                          } else {
+                              if (palletsData.length === 0) createInitialData();
+                          }
+                          updateAll();
+                      }, (err) => {
+                          enableLocalStorageFallback();
+                      });
+                } else {
+                    enableLocalStorageFallback();
                 }
+            } catch (error) {
+                enableLocalStorageFallback();
+            }
+        }
+
+        function enableLocalStorageFallback() {
+            isFirebaseLive = false;
+            loadFromLocalStorage();
+        }
+
+        function createInitialData() {
+            palletsData = [
+                { id: 'P1', name: 'พาเลท A (โซน 1)', boxes: [] },
+                { id: 'P2', name: 'พาเลท B (โซน 1)', boxes: [] },
+                { id: 'P3', name: 'พาเลท C (โซน 2)', boxes: [] }
+            ];
+            saveData();
+        }
+
+        function saveData() {
+            if (isFirebaseLive && db) {
+                db.collection('warehouse_system').doc('current_state').set({
+                    pallets: palletsData,
+                    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+                }).catch(err => {
+                    saveToLocalStorage();
+                });
+            } else {
+                saveToLocalStorage();
+            }
+        }
+
+        function saveToLocalStorage() {
+            localStorage.setItem('warehouse_system_data', JSON.stringify(palletsData));
+            updateAll();
+        }
+
+        function loadFromLocalStorage() {
+            const saved = localStorage.getItem('warehouse_system_data');
+            if (saved) {
                 try {
-                    await setDoc(doc(db, "pallet_studio", "main_store"), { 
-                        pallets: JSON.stringify(data), 
-                        updatedAt: new Date().toISOString() 
-                    });
-                } catch (e) { console.error("Cloud Save Failed:", e); }
-            },
-            listen(callback) {
-                if (!isOnline) {
-                    const local = localStorage.getItem('pallet_cloud_backup');
-                    if (local) callback(JSON.parse(local));
-                    return;
+                    palletsData = JSON.parse(saved);
+                } catch(e) {
+                    createInitialData();
                 }
-                onSnapshot(doc(db, "pallet_studio", "main_store"), (docSnap) => {
-                    if (docSnap.exists() && docSnap.data().pallets) {
-                        callback(JSON.parse(docSnap.data().pallets));
-                    }
-                });
+            } else {
+                createInitialData();
             }
-        };
-    </script>
-
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: { fontFamily: { sans: ['Kanit', 'sans-serif'], mono: ['JetBrains Mono', 'monospace'] } }
-            }
+            updateAll();
         }
-    </script>
-    <style>
-        * { box-sizing: border-box; }
-        html, body { width: 100%; height: 100%; margin: 0; padding: 0; overflow: hidden; background-color: #020617; }
-        #canvas-container { width: 100%; height: 100%; position: absolute; top: 0; left: 0; }
-        #canvas-container canvas { display: block; outline: none; }
-        .custom-scrollbar::-webkit-scrollbar { width: 4px; height: 4px; }
-        .custom-scrollbar::-webkit-scrollbar-thumb { background: #334155; border-radius: 2px; }
-        button, input, select { touch-action: manipulation; }
-    </style>
-</head>
-<body class="flex flex-col font-sans bg-slate-950 text-slate-100">
 
-    <!-- Top Compact Header -->
-    <header class="h-12 bg-slate-900 border-b border-slate-800 px-3 flex items-center justify-between shrink-0 z-20">
-        <div class="flex items-center space-x-2">
-            <div class="bg-sky-600 p-1.5 rounded-lg text-white shadow">
-                <i class="fa-solid fa-boxes-packing text-sm"></i>
-            </div>
-            <h1 class="font-bold text-sm text-white flex items-center gap-1.5">
-                Pallet3D 
-                <span id="cloud-status-badge" class="text-[9px] bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 px-1.5 py-0.2 rounded-full font-mono">CLOUD LIVE</span>
-            </h1>
-        </div>
-
-        <div class="flex items-center space-x-1.5">
-            <button id="btn-back-overview" onclick="app.viewAllOverview()" class="hidden bg-slate-800 text-sky-400 px-2 py-1 rounded-lg text-xs font-medium border border-sky-500/30">
-                <i class="fa-solid fa-globe"></i> ภาพรวม
-            </button>
-            <button onclick="app.addNewPallet()" class="bg-sky-600 hover:bg-sky-500 text-white px-2.5 py-1 rounded-lg text-xs font-medium shadow active:scale-95">
-                <i class="fa-solid fa-plus"></i> เพิ่มพาเลท
-            </button>
-        </div>
-    </header>
-
-    <!-- Top Inventory Dashboard Bar (สรุปสต็อกสินค้า) -->
-    <div class="bg-slate-900/90 border-b border-slate-800 px-3 py-1.5 grid grid-cols-3 gap-2 shrink-0 z-20 text-center font-mono">
-        <div class="bg-slate-950/80 border border-slate-800 rounded-lg p-1">
-            <div class="text-[9px] text-slate-400 font-sans">สินค้าทั้งหมด</div>
-            <div class="text-xs font-bold text-sky-400" id="stat-total-boxes">0 ลัง</div>
-        </div>
-        <div class="bg-slate-950/80 border border-slate-800 rounded-lg p-1">
-            <div class="text-[9px] text-slate-400 font-sans">จำนวนพาเลท</div>
-            <div class="text-xs font-bold text-emerald-400" id="stat-total-pallets">0 พาเลท</div>
-        </div>
-        <div class="bg-slate-950/80 border border-slate-800 rounded-lg p-1">
-            <div class="text-[9px] text-slate-400 font-sans">เฉลี่ย/พาเลท</div>
-            <div class="text-xs font-bold text-amber-400" id="stat-avg-boxes">0 ลัง</div>
-        </div>
-    </div>
-
-    <!-- Main Body Area -->
-    <div class="flex-1 flex flex-col relative overflow-hidden" style="height: calc(100vh - 142px);">
-
-        <!-- 3D Viewport -->
-        <main id="view-3d" class="w-full h-full relative bg-slate-950">
-            <div id="canvas-container"></div>
-
-            <div class="absolute top-2 left-2 right-2 pointer-events-none z-10 flex justify-center">
-                <div class="bg-slate-900/90 border border-slate-800 px-3 py-1 rounded-full text-[11px] text-slate-300 pointer-events-auto shadow">
-                    <span id="view-mode-indicator" class="font-bold text-sky-400 truncate">
-                        <i class="fa-solid fa-eye"></i> ภาพรวมพาเลท (แตะพาเลทเพื่อส่องดู)
-                    </span>
-                </div>
-            </div>
-        </main>
-
-        <!-- Control Sheet Panel -->
-        <div id="panel-content" class="hidden w-full h-full bg-slate-900 overflow-y-auto custom-scrollbar p-3 space-y-3">
+        function init3D() {
+            const container = document.getElementById('canvas-container');
             
-            <div id="tab-pallets" class="space-y-3">
-                <div class="flex justify-between items-center bg-slate-950 p-2.5 rounded-xl border border-slate-800">
-                    <span class="text-xs text-slate-300">ตำแหน่งพาเลท:</span>
-                    <button onclick="app.autoArrangePallets()" class="text-xs text-sky-400 bg-sky-950 border border-sky-800 px-2.5 py-1 rounded-lg">
-                        <i class="fa-solid fa-grid-2"></i> จัดเรียงตาราง
-                    </button>
-                </div>
-                <div id="pallet-list-container" class="space-y-2"></div>
-            </div>
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x070d1b);
 
-            <div id="tab-inspector" class="hidden space-y-3">
-                <div id="inspector-pallet-header" class="p-2.5 bg-sky-950/50 border border-sky-800/60 rounded-xl space-y-2">
-                    <div class="flex items-center justify-between">
-                        <span class="text-xs font-bold text-sky-300 truncate" id="insp-pallet-title">พาเลท</span>
-                        <span id="insp-pallet-status" class="text-[10px] bg-sky-500/20 text-sky-300 border border-sky-500/30 px-2 py-0.5 rounded-full font-mono">0 กล่อง</span>
-                    </div>
-                    <div class="grid grid-cols-3 gap-1.5 text-[11px]">
-                        <div>
-                            <label class="text-[10px] text-slate-400">ยาว L (mm)</label>
-                            <input type="number" id="active-pallet-l" onchange="app.updateActivePalletSpec()" class="w-full bg-slate-800 border border-slate-700 rounded px-1.5 py-1 text-sky-400 font-mono">
-                        </div>
-                        <div>
-                            <label class="text-[10px] text-slate-400">กว้าง W (mm)</label>
-                            <input type="number" id="active-pallet-w" onchange="app.updateActivePalletSpec()" class="w-full bg-slate-800 border border-slate-700 rounded px-1.5 py-1 text-sky-400 font-mono">
-                        </div>
-                        <div>
-                            <label class="text-[10px] text-slate-400">สูง H (mm)</label>
-                            <input type="number" id="active-pallet-h" onchange="app.updateActivePalletSpec()" class="w-full bg-slate-800 border border-slate-700 rounded px-1.5 py-1 text-sky-400 font-mono">
-                        </div>
-                    </div>
-                </div>
+            camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.set(0, 18, 26);
 
-                <div class="p-3 bg-slate-950 border border-slate-800 rounded-xl space-y-2">
-                    <div class="text-xs font-bold text-slate-200"><i class="fa-solid fa-plus-circle text-sky-400"></i> เพิ่มลังแฟ้มลงพาเลทนี้</div>
-                    <input type="text" id="new-box-name" placeholder="ชื่อลัง เช่น เอกสารการเงิน A1" class="w-full bg-slate-800 border border-slate-700 rounded px-2.5 py-1.5 text-xs text-white">
-                    <div class="grid grid-cols-3 gap-1.5">
-                        <input type="number" id="new-box-l" value="400" placeholder="ยาว" class="bg-slate-800 border border-slate-700 rounded px-1.5 py-1 text-xs font-mono">
-                        <input type="number" id="new-box-w" value="300" placeholder="กว้าง" class="bg-slate-800 border border-slate-700 rounded px-1.5 py-1 text-xs font-mono">
-                        <input type="number" id="new-box-h" value="250" placeholder="สูง" class="bg-slate-800 border border-slate-700 rounded px-1.5 py-1 text-xs font-mono">
-                    </div>
-                    <div class="grid grid-cols-2 gap-1.5 items-center">
-                        <input type="number" id="new-box-qty" value="8" placeholder="จำนวนกล่อง" class="bg-slate-800 border border-slate-700 rounded px-1.5 py-1 text-xs font-mono">
-                        <input type="color" id="new-box-color" value="#0284c7" class="w-full h-7 bg-slate-800 border border-slate-700 rounded cursor-pointer p-0.5">
-                    </div>
-                    <button onclick="app.addBoxToActivePallet()" class="w-full bg-sky-600 hover:bg-sky-500 text-white py-2 rounded-lg text-xs font-bold transition-all active:scale-95">
-                        + เพิ่มลังเข้าพาเลท
-                    </button>
-                </div>
+            renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
+            container.appendChild(renderer.domElement);
 
-                <div id="active-pallet-box-list" class="space-y-2"></div>
-            </div>
-        </div>
-    </div>
+            controls = new THREE.OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+            controls.dampingFactor = 0.08;
+            controls.maxPolarAngle = Math.PI / 2 - 0.05;
 
-    <!-- Bottom Navigation Bar -->
-    <nav class="h-14 bg-slate-900 border-t border-slate-800 grid grid-cols-3 shrink-0 z-30">
-        <button onclick="app.switchMobileTab('3d')" id="nav-btn-3d" class="flex flex-col items-center justify-center text-sky-400">
-            <i class="fa-solid fa-cube text-base"></i>
-            <span class="text-[10px] mt-0.5 font-medium">ฉาก 3D</span>
-        </button>
-        <button onclick="app.switchMobileTab('pallets')" id="nav-btn-pallets" class="flex flex-col items-center justify-center text-slate-400">
-            <i class="fa-solid fa-pallet text-base"></i>
-            <span class="text-[10px] mt-0.5 font-medium">พาเลท</span>
-        </button>
-        <button onclick="app.switchMobileTab('inspector')" id="nav-btn-inspector" class="flex flex-col items-center justify-center text-slate-400">
-            <i class="fa-solid fa-box text-base"></i>
-            <span class="text-[10px] mt-0.5 font-medium">จัดการกล่อง</span>
-        </button>
-    </nav>
+            raycaster = new THREE.Raycaster();
+            mouse = new THREE.Vector2();
 
-    <script>
-        class FinalCloudPalletApp {
-            constructor() {
-                this.pallets = [];
-                this.selectedPalletId = null;
+            const hemiLight = new THREE.HemisphereLight(0xffffff, 0x1e293b, 0.85);
+            hemiLight.position.set(0, 50, 0);
+            scene.add(hemiLight);
 
-                this.scene = null;
-                this.camera = null;
-                this.renderer = null;
-                this.controls = null;
+            const dirLight = new THREE.DirectionalLight(0xffffff, 0.75);
+            dirLight.position.set(20, 40, 20);
+            scene.add(dirLight);
 
-                this.palletMeshes = [];
-                this.boxMeshes = [];
+            const gridHelper = new THREE.GridHelper(60, 30, 0x38bdf8, 0x1e293b);
+            gridHelper.position.y = -0.01;
+            scene.add(gridHelper);
 
-                this.raycaster = new THREE.Raycaster();
-                this.mouse = new THREE.Vector2();
+            scene.add(pallet3DGroup);
 
-                this.init3D();
-                this.initEvents();
-                this.initSync();
+            const dom = renderer.domElement;
+            dom.addEventListener('pointerdown', handleStart);
+            dom.addEventListener('pointermove', handleMove);
+            dom.addEventListener('pointerup', handleEnd);
+
+            window.addEventListener('resize', onWindowResize);
+            animate();
+        }
+
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        function getCachedLabelTexture(text) {
+            if (textureCache.has(text)) return textureCache.get(text);
+
+            const canvas = document.createElement('canvas');
+            canvas.width = 256; canvas.height = 128;
+            const ctx = canvas.getContext('2d');
+
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(0, 0, 256, 128);
+            ctx.lineWidth = 8;
+            ctx.strokeStyle = '#3b82f6';
+            ctx.strokeRect(0, 0, 256, 128);
+
+            ctx.fillStyle = '#0f172a';
+            ctx.font = 'bold 20px Prompt, sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            
+            const truncatedText = text.length > 14 ? text.substring(0, 12) + '..' : text;
+            ctx.fillText(truncatedText, 128, 64);
+
+            const texture = new THREE.CanvasTexture(canvas);
+            textureCache.set(text, texture);
+            return texture;
+        }
+
+        function render3DScene() {
+            while(pallet3DGroup.children.length > 0) { 
+                const obj = pallet3DGroup.children[0];
+                pallet3DGroup.remove(obj);
             }
+            boxMeshMap.clear();
 
-            init3D() {
-                const container = document.getElementById('canvas-container');
-                const width = container.clientWidth || window.innerWidth;
-                const height = container.clientHeight || (window.innerHeight - 142);
+            palletsData.forEach((pallet, pIndex) => {
+                const col = pIndex % GRID_COLS;
+                const row = Math.floor(pIndex / GRID_COLS);
+                const posX = (col - 1) * SPACING_X;
+                const posZ = row * SPACING_Z;
 
-                this.scene = new THREE.Scene();
-                this.scene.background = new THREE.Color(0x020617);
+                const palletMesh = createPalletMesh(PALLET_WIDTH, PALLET_HEIGHT, PALLET_LENGTH);
+                palletMesh.position.set(posX, 0, posZ);
+                pallet3DGroup.add(palletMesh);
 
-                this.camera = new THREE.PerspectiveCamera(50, width / height, 1, 30000);
-                this.camera.position.set(2200, 2600, 3000);
+                const slotCounts = [0, 0, 0, 0];
 
-                this.renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-                this.renderer.setSize(width, height);
-                this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-                container.appendChild(this.renderer.domElement);
+                (pallet.boxes || []).forEach((box) => {
+                    const slotIdx = box.slot !== undefined ? box.slot : 0;
+                    const layerIdx = slotCounts[slotIdx];
+                    slotCounts[slotIdx]++;
 
-                this.controls = new THREE.OrbitControls(this.camera, this.renderer.domElement);
-                this.controls.enableDamping = true;
+                    box.code = `${pallet.id}-S${slotIdx + 1}-L${layerIdx + 1}`;
 
-                const ambient = new THREE.AmbientLight(0xffffff, 0.85);
-                this.scene.add(ambient);
+                    const boxX = posX + LOCAL_SLOT_OFFSETS[slotIdx].x;
+                    const boxY = PALLET_HEIGHT + (layerIdx * BOX_HEIGHT) + (BOX_HEIGHT / 2);
+                    const boxZ = posZ + LOCAL_SLOT_OFFSETS[slotIdx].z;
 
-                const dirLight = new THREE.DirectionalLight(0xffffff, 0.6);
-                dirLight.position.set(2000, 4000, 2000);
-                this.scene.add(dirLight);
-
-                const grid = new THREE.GridHelper(10000, 40, 0x334155, 0x1e293b);
-                grid.position.y = -10;
-                this.scene.add(grid);
-
-                const animate = () => {
-                    requestAnimationFrame(animate);
-                    this.controls.update();
-                    this.renderer.render(this.scene, this.camera);
-                };
-                animate();
-
-                window.addEventListener('resize', () => {
-                    const w = container.clientWidth || window.innerWidth;
-                    const h = container.clientHeight || (window.innerHeight - 142);
-                    this.camera.aspect = w / h;
-                    this.camera.updateProjectionMatrix();
-                    this.renderer.setSize(w, h);
-                });
-            }
-
-            initEvents() {
-                const container = document.getElementById('canvas-container');
-                container.addEventListener('click', (e) => {
-                    const rect = container.getBoundingClientRect();
-                    this.mouse.x = ((e.clientX - rect.left) / container.clientWidth) * 2 - 1;
-                    this.mouse.y = -((e.clientY - rect.top) / container.clientHeight) * 2 + 1;
-
-                    this.raycaster.setFromCamera(this.mouse, this.camera);
+                    const colorHex = LAYER_COLORS[layerIdx % LAYER_COLORS.length];
+                    const boxMesh = createBoxMesh(BOX_WIDTH, BOX_HEIGHT, BOX_LENGTH, colorHex, box.label || 'ลัง');
                     
-                    const palletHits = this.raycaster.intersectObjects(this.palletMeshes, true);
-                    if (palletHits.length > 0) {
-                        let obj = palletHits[0].object;
-                        while (obj.parent && !obj.userData.palletId) obj = obj.parent;
-                        if (obj.userData.palletId) {
-                            this.selectAndInspectPallet(obj.userData.palletId);
-                            return;
-                        }
-                    }
+                    boxMesh.position.set(boxX, boxY, boxZ);
+                    boxMesh.userData = { 
+                        boxId: box.id, 
+                        palletId: pallet.id, 
+                        label: box.label,
+                        code: box.code,
+                        originalColor: colorHex,
+                        isBox: true
+                    };
+
+                    pallet3DGroup.add(boxMesh);
+                    boxMeshMap.set(box.id, boxMesh);
                 });
+            });
+        }
+
+        function createPalletMesh(w, h, l) {
+            const group = new THREE.Group();
+            
+            const woodMat = new THREE.MeshLambertMaterial({ color: 0xd97706 });
+            const blockMat = new THREE.MeshLambertMaterial({ color: 0xb45309 });
+
+            const topPlankThickness = 0.08;
+            const bottomPlankThickness = 0.06;
+            const blockHeight = h - topPlankThickness - bottomPlankThickness;
+
+            const topPlankCount = 5;
+            const topPlankWidth = (w - 0.2) / topPlankCount;
+            for (let i = 0; i < topPlankCount; i++) {
+                const plankGeo = new THREE.BoxGeometry(topPlankWidth - 0.04, topPlankThickness, l);
+                const plank = new THREE.Mesh(plankGeo, woodMat);
+                plank.position.x = -w / 2 + topPlankWidth / 2 + i * topPlankWidth;
+                plank.position.y = h - topPlankThickness / 2;
+                group.add(plank);
             }
 
-            initSync() {
-                if (window.CloudDB && window.CloudDB.enabled) {
-                    document.getElementById('cloud-status-badge').textContent = "CLOUD LIVE";
-                    window.CloudDB.listen((data) => {
-                        if (data && Array.isArray(data)) {
-                            this.pallets = data;
-                            this.recalculateAll(false);
-                        }
-                    });
-                } else {
-                    document.getElementById('cloud-status-badge').textContent = "LOCAL MODE";
-                    document.getElementById('cloud-status-badge').className = "text-[9px] bg-amber-500/20 text-amber-400 border border-amber-500/30 px-1.5 py-0.2 rounded-full font-mono";
-                    const saved = localStorage.getItem('pallet_cloud_backup');
-                    if (saved) {
-                        try { this.pallets = JSON.parse(saved); } catch(e) {}
-                    }
-                    if (!this.pallets || this.pallets.length === 0) {
-                        this.pallets = [{
-                            id: 'p-1', name: 'พาเลทที่ 1',
-                            length: 1200, width: 1000, height: 1600,
-                            posX: 0, posZ: 0,
-                            boxes: [{ id: 'b1', name: 'ลังแฟ้มเอกสาร', l: 400, w: 300, h: 250, qty: 8, color: '#0284c7' }]
-                        }];
-                    }
-                    this.recalculateAll(false);
+            const blockSize = 0.35;
+            const xPositions = [-w / 2 + blockSize / 2 + 0.1, 0, w / 2 - blockSize / 2 - 0.1];
+            const zPositions = [-l / 2 + blockSize / 2 + 0.1, 0, l / 2 - blockSize / 2 - 0.1];
+
+            xPositions.forEach(x => {
+                zPositions.forEach(z => {
+                    const blockGeo = new THREE.BoxGeometry(blockSize, blockHeight, blockSize);
+                    const block = new THREE.Mesh(blockGeo, blockMat);
+                    block.position.set(x, bottomPlankThickness + blockHeight / 2, z);
+                    group.add(block);
+                });
+            });
+
+            const bottomPlankWidth = 0.45;
+            xPositions.forEach(x => {
+                const bPlankGeo = new THREE.BoxGeometry(bottomPlankWidth, bottomPlankThickness, l);
+                const bPlank = new THREE.Mesh(bPlankGeo, woodMat);
+                bPlank.position.set(x, bottomPlankThickness / 2, 0);
+                group.add(bPlank);
+            });
+
+            const shadowGeo = new THREE.PlaneGeometry(w + 0.2, l + 0.2);
+            const shadowMat = new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.2 });
+            const shadow = new THREE.Mesh(shadowGeo, shadowMat);
+            shadow.rotation.x = -Math.PI / 2;
+            shadow.position.y = 0.005;
+            group.add(shadow);
+
+            return group;
+        }
+
+        function createBoxMesh(w, h, l, colorHex, labelText) {
+            const geometry = new THREE.BoxGeometry(w, h, l);
+            const material = new THREE.MeshLambertMaterial({ color: colorHex, transparent: true, opacity: 1.0 });
+
+            const mesh = new THREE.Mesh(geometry, material);
+
+            const edges = new THREE.EdgesGeometry(geometry);
+            const lineMat = new THREE.LineBasicMaterial({ color: 0x0f172a });
+            const line = new THREE.LineSegments(edges, lineMat);
+            mesh.add(line);
+
+            const texture = getCachedLabelTexture(labelText);
+            const labelGeo = new THREE.PlaneGeometry(w * 0.85, h * 0.55);
+            const labelMat = new THREE.MeshBasicMaterial({ map: texture, side: THREE.DoubleSide });
+
+            const labelFront = new THREE.Mesh(labelGeo, labelMat);
+            labelFront.position.z = l / 2 + 0.01;
+            mesh.add(labelFront);
+
+            return mesh;
+        }
+
+        function handleStart(event) {
+            if (currentMode !== 'drag') return;
+            const clientX = event.clientX || (event.touches && event.touches[0].clientX);
+            const clientY = event.clientY || (event.touches && event.touches[0].clientY);
+            if (!clientX || !clientY) return;
+
+            mouse.x = (clientX / window.innerWidth) * 2 - 1;
+            mouse.y = -(clientY / window.innerHeight) * 2 + 1;
+
+            raycaster.setFromCamera(mouse, camera);
+            const intersects = raycaster.intersectObjects(pallet3DGroup.children, true);
+
+            if (intersects.length > 0) {
+                let obj = intersects[0].object;
+                while (obj && !obj.userData.isBox && obj.parent && obj !== pallet3DGroup) {
+                    obj = obj.parent;
                 }
-                this.viewAllOverview();
-            }
+                if (obj && obj.userData.isBox) {
+                    isDragging = true;
+                    draggedMesh = obj;
+                    originalBoxPosition.copy(draggedMesh.position);
+                    dragPlane.setFromNormalAndCoplanarPoint(new THREE.Vector3(0, 1, 0), draggedMesh.position);
 
-            saveData() {
-                if (window.CloudDB) {
-                    window.CloudDB.save(this.pallets);
-                }
-            }
-
-            createBoxMaterials(bgColorHex, boxName) {
-                const canvas = document.createElement('canvas');
-                canvas.width = 256; canvas.height = 128;
-                const ctx = canvas.getContext('2d');
-
-                ctx.fillStyle = bgColorHex;
-                ctx.fillRect(0, 0, 256, 128);
-
-                ctx.strokeStyle = 'rgba(0, 0, 0, 0.3)';
-                ctx.lineWidth = 6;
-                ctx.strokeRect(3, 3, 250, 122);
-
-                ctx.fillStyle = '#ffffff';
-                ctx.font = 'bold 24px Kanit, sans-serif';
-                ctx.textAlign = 'center';
-                ctx.textBaseline = 'middle';
-                
-                let displayName = boxName;
-                if (displayName.length > 10) displayName = displayName.substring(0, 8) + '..';
-                ctx.fillText(displayName, 128, 64);
-
-                const texture = new THREE.CanvasTexture(canvas);
-                const sideMat = new THREE.MeshStandardMaterial({ map: texture, roughness: 0.4 });
-                const plainMat = new THREE.MeshStandardMaterial({ color: new THREE.Color(bgColorHex), roughness: 0.5 });
-
-                return [sideMat, sideMat, plainMat, plainMat, sideMat, sideMat];
-            }
-
-            addNewPallet() {
-                const count = this.pallets.length + 1;
-                const newPallet = {
-                    id: 'p-' + Date.now(),
-                    name: `พาเลท ${count}`,
-                    length: 1200, width: 1000, height: 1600,
-                    posX: (count - 1) * 1400 - 650, posZ: 0,
-                    boxes: [{ id: 'nb1', name: 'ลังแฟ้มเอกสาร', l: 400, w: 300, h: 250, qty: 8, color: '#f59e0b' }]
-                };
-                this.pallets.push(newPallet);
-                this.recalculateAll(true);
-                this.selectAndInspectPallet(newPallet.id);
-            }
-
-            deletePallet(palletId) {
-                if (this.pallets.length <= 1) return alert('ต้องมีอย่างน้อย 1 พาเลทในระบบ');
-                this.pallets = this.pallets.filter(p => p.id !== palletId);
-                if (this.selectedPalletId === palletId) this.viewAllOverview();
-                else this.recalculateAll(true);
-            }
-
-            autoArrangePallets() {
-                const cols = Math.ceil(Math.sqrt(this.pallets.length));
-                this.pallets.forEach((p, idx) => {
-                    const row = Math.floor(idx / cols);
-                    const col = idx % cols;
-                    p.posX = (col - (cols - 1) / 2) * 1400;
-                    p.posZ = (row - (Math.ceil(this.pallets.length / cols) - 1) / 2) * 1300;
-                });
-                this.recalculateAll(true);
-                this.viewAllOverview();
-            }
-
-            selectAndInspectPallet(palletId) {
-                this.selectedPalletId = palletId;
-                const pallet = this.pallets.find(p => p.id === palletId);
-                if (!pallet) return;
-
-                document.getElementById('btn-back-overview').classList.remove('hidden');
-                document.getElementById('view-mode-indicator').innerHTML = `
-                    <i class="fa-solid fa-crosshairs text-sky-400"></i> <span class="text-white font-bold ml-1">${pallet.name}</span>
-                `;
-
-                this.updateInspectorUI(pallet);
-                this.switchMobileTab('3d');
-            }
-
-            viewAllOverview() {
-                this.selectedPalletId = null;
-                document.getElementById('btn-back-overview').classList.add('hidden');
-                document.getElementById('view-mode-indicator').innerHTML = `
-                    <i class="fa-solid fa-eye text-sky-400"></i> ภาพรวมพาเลท (แตะพาเลทเพื่อส่องดู)
-                `;
-                this.camera.position.set(0, 3000, 3600);
-                this.controls.target.set(0, 0, 0);
-                this.controls.update();
-            }
-
-            updateInspectorUI(pallet) {
-                document.getElementById('insp-pallet-title').textContent = pallet.name;
-                let totalBoxQty = 0; pallet.boxes.forEach(b => totalBoxQty += b.qty);
-                document.getElementById('insp-pallet-status').textContent = `${totalBoxQty} กล่อง`;
-
-                document.getElementById('active-pallet-l').value = pallet.length;
-                document.getElementById('active-pallet-w').value = pallet.width;
-                document.getElementById('active-pallet-h').value = pallet.height;
-
-                const container = document.getElementById('active-pallet-box-list');
-                container.innerHTML = pallet.boxes.map((b) => `
-                    <div class="bg-slate-950 border border-slate-800 rounded-lg p-2 flex justify-between items-center text-xs">
-                        <div class="flex items-center gap-2">
-                            <span class="w-2.5 h-2.5 rounded-full" style="background-color: ${b.color}"></span>
-                            <span class="font-bold text-slate-200">${b.name}</span>
-                            <span class="text-sky-400 font-mono">(${b.qty} ใบ)</span>
-                        </div>
-                        <button onclick="app.removeBoxFromPallet('${pallet.id}', '${b.id}')" class="text-slate-500 hover:text-rose-400 p-1">
-                            <i class="fa-solid fa-trash-can"></i>
-                        </button>
-                    </div>
-                `).join('');
-            }
-
-            updateActivePalletSpec() {
-                if (!this.selectedPalletId) return;
-                const pallet = this.pallets.find(p => p.id === this.selectedPalletId);
-                if (!pallet) return;
-                pallet.length = parseInt(document.getElementById('active-pallet-l').value) || 1200;
-                pallet.width = parseInt(document.getElementById('active-pallet-w').value) || 1000;
-                pallet.height = parseInt(document.getElementById('active-pallet-h').value) || 1600;
-                this.recalculateAll(true);
-            }
-
-            addBoxToActivePallet() {
-                if (!this.selectedPalletId) return;
-                const pallet = this.pallets.find(p => p.id === this.selectedPalletId);
-                if (!pallet) return;
-
-                const name = document.getElementById('new-box-name').value.trim() || 'ลังแฟ้มเอกสาร';
-                const l = parseInt(document.getElementById('new-box-l').value) || 400;
-                const w = parseInt(document.getElementById('new-box-w').value) || 300;
-                const h = parseInt(document.getElementById('new-box-h').value) || 250;
-                const qty = parseInt(document.getElementById('new-box-qty').value) || 8;
-                const color = document.getElementById('new-box-color').value;
-
-                pallet.boxes.push({ id: 'b-' + Date.now(), name, l, w, h, qty, color });
-                this.recalculateAll(true);
-                this.updateInspectorUI(pallet);
-            }
-
-            removeBoxFromPallet(palletId, boxId) {
-                const pallet = this.pallets.find(p => p.id === palletId);
-                if (!pallet) return;
-                pallet.boxes = pallet.boxes.filter(b => b.id !== boxId);
-                this.recalculateAll(true);
-                this.updateInspectorUI(pallet);
-            }
-
-            updateDashboardStats(totalBoxes, totalPallets) {
-                document.getElementById('stat-total-boxes').textContent = `${totalBoxes} ลัง`;
-                document.getElementById('stat-total-pallets').textContent = `${totalPallets} พาเลท`;
-                const avg = totalPallets > 0 ? (totalBoxes / totalPallets).toFixed(1) : 0;
-                document.getElementById('stat-avg-boxes').textContent = `${avg} ลัง`;
-            }
-
-            recalculateAll(shouldSave = true) {
-                this.boxMeshes.forEach(m => this.scene.remove(m));
-                this.palletMeshes.forEach(m => this.scene.remove(m));
-                this.boxMeshes = []; this.palletMeshes = [];
-
-                let grandTotalBoxes = 0;
-
-                this.pallets.forEach(pallet => {
-                    // Pallet Base
-                    const woodMat = new THREE.MeshStandardMaterial({ color: 0x854d0e });
-                    const baseGeo = new THREE.BoxGeometry(pallet.length, 20, pallet.width);
-                    const baseMesh = new THREE.Mesh(baseGeo, woodMat);
-                    baseMesh.position.set(pallet.posX, -10, pallet.posZ);
-                    baseMesh.userData = { palletId: pallet.id };
-                    this.scene.add(baseMesh);
-                    this.palletMeshes.push(baseMesh);
-
-                    // 4-Column Stacking
-                    let itemsToPack = [];
-                    pallet.boxes.forEach(b => {
-                        for (let i = 0; i < b.qty; i++) itemsToPack.push(b);
-                    });
-
-                    const gridCols = 2, gridRows = 2;
-                    const colWidth = pallet.length / gridCols;
-                    const rowDepth = pallet.width / gridRows;
-                    let slotHeights = [0, 0, 0, 0];
-
-                    itemsToPack.forEach((item, idx) => {
-                        const slotIdx = idx % 4;
-                        if (slotHeights[slotIdx] + item.h <= pallet.height) {
-                            const col = slotIdx % gridCols;
-                            const row = Math.floor(slotIdx / gridCols);
-                            const x = col * colWidth + (colWidth - item.l) / 2;
-                            const z = row * rowDepth + (rowDepth - item.w) / 2;
-
-                            const boxGeo = new THREE.BoxGeometry(item.l, item.h, item.w);
-                            const materials = this.createBoxMaterials(item.color, item.name);
-                            const mesh = new THREE.Mesh(boxGeo, materials);
-
-                            const posX = pallet.posX + x + item.l/2 - pallet.length/2;
-                            const posY = slotHeights[slotIdx] + item.h/2;
-                            const posZ = pallet.posZ + z + item.w/2 - pallet.width/2;
-
-                            mesh.position.set(posX, posY, posZ);
-                            mesh.userData = { palletId: pallet.id };
-
-                            const edgeGeo = new THREE.EdgesGeometry(boxGeo);
-                            const edgeMat = new THREE.LineBasicMaterial({ color: 0x000000 });
-                            mesh.add(new THREE.LineSegments(edgeGeo, edgeMat));
-
-                            this.scene.add(mesh);
-                            this.boxMeshes.push(mesh);
-
-                            slotHeights[slotIdx] += item.h;
-                            grandTotalBoxes++;
-                        }
-                    });
-                });
-
-                this.updateDashboardStats(grandTotalBoxes, this.pallets.length);
-                this.renderPalletListUI();
-                if (shouldSave) this.saveData();
-            }
-
-            renderPalletListUI() {
-                const container = document.getElementById('pallet-list-container');
-                container.innerHTML = this.pallets.map(p => {
-                    const palletBoxesCount = p.boxes.reduce((acc, b) => acc + (b.qty || 0), 0);
-                    return `
-                        <div class="bg-slate-950 border ${this.selectedPalletId === p.id ? 'border-sky-500' : 'border-slate-800'} rounded-xl p-2.5 space-y-2 text-xs">
-                            <div class="flex justify-between items-center">
-                                <div>
-                                    <input type="text" value="${p.name}" onchange="app.renamePallet('${p.id}', this.value)" class="bg-transparent border-b border-slate-700 font-bold text-white outline-none focus:border-sky-500">
-                                    <div class="text-[10px] text-slate-400 font-mono mt-0.5">ขนาด: ${p.length}x${p.width}x${p.height} mm</div>
-                                </div>
-                                <div class="flex items-center gap-1">
-                                    <button onclick="app.selectAndInspectPallet('${p.id}')" class="bg-sky-600 text-white px-2.5 py-1 rounded-lg text-[11px]">จัดการ</button>
-                                    <button onclick="app.deletePallet('${p.id}')" class="text-slate-500 hover:text-rose-400 p-1"><i class="fa-solid fa-trash-can"></i></button>
-                                </div>
-                            </div>
-                            
-                            <!-- Breakdown รายการสินค้าย่อยในพาเลทนี้ -->
-                            <div class="bg-slate-900 border border-slate-800/80 rounded-lg p-2 space-y-1">
-                                <div class="flex justify-between items-center text-[10px] font-bold text-slate-300 border-b border-slate-800 pb-1">
-                                    <span><i class="fa-solid fa-box text-sky-400"></i> รายการสินค้าในพาเลท</span>
-                                    <span class="text-sky-400 font-mono">${palletBoxesCount} ลัง</span>
-                                </div>
-                                <div class="space-y-1">
-                                    ${p.boxes.length > 0 ? p.boxes.map(b => `
-                                        <div class="flex justify-between items-center text-[10px] text-slate-400 font-mono">
-                                            <div class="flex items-center gap-1.5 truncate">
-                                                <span class="w-2 h-2 rounded-full inline-block shrink-0" style="background-color: ${b.color}"></span>
-                                                <span class="truncate text-slate-300">${b.name}</span>
-                                            </div>
-                                            <span class="font-bold text-sky-300 ml-2">${b.qty} ใบ</span>
-                                        </div>
-                                    `).join('') : '<div class="text-[10px] text-slate-500 text-center py-0.5">ไม่มีกล่องในพาเลทนี้</div>'}
-                                </div>
-                            </div>
-                        </div>
-                    `;
-                }).join('');
-            }
-
-            renamePallet(palletId, newName) {
-                const p = this.pallets.find(item => item.id === palletId);
-                if (p) { p.name = newName; this.recalculateAll(true); }
-            }
-
-            switchMobileTab(targetTab) {
-                ['3d', 'pallets', 'inspector'].forEach(t => {
-                    const btn = document.getElementById(`nav-btn-${t}`);
-                    if (btn) btn.className = `flex flex-col items-center justify-center ${t === targetTab ? 'text-sky-400' : 'text-slate-400'}`;
-                });
-
-                if (targetTab === '3d') {
-                    document.getElementById('view-3d').classList.remove('hidden');
-                    document.getElementById('panel-content').classList.add('hidden');
-                } else {
-                    document.getElementById('view-3d').classList.add('hidden');
-                    document.getElementById('panel-content').classList.remove('hidden');
-                    document.getElementById('tab-pallets').classList.toggle('hidden', targetTab !== 'pallets');
-                    document.getElementById('tab-inspector').classList.toggle('hidden', targetTab !== 'inspector');
+                    if (raycaster.ray.intersectPlane(dragPlane, planeIntersect)) {
+                        dragOffset.subVectors(draggedMesh.position, planeIntersect);
+                    }
+                    draggedMesh.position.y += 0.5;
+                    showToast(`ย้าย: ${draggedMesh.userData.label}`);
                 }
             }
         }
 
-        let app = null;
-        window.addEventListener('load', () => { app = new FinalCloudPalletApp(); });
+        function handleMove(event) {
+            if (!isDragging || !draggedMesh) return;
+            const clientX = event.clientX || (event.touches && event.touches[0].clientX);
+            const clientY = event.clientY || (event.touches && event.touches[0].clientY);
+            if (!clientX || !clientY) return;
+
+            mouse.x = (clientX / window.innerWidth) * 2 - 1;
+            mouse.y = -(clientY / window.innerHeight) * 2 + 1;
+
+            raycaster.setFromCamera(mouse, camera);
+            if (raycaster.ray.intersectPlane(dragPlane, planeIntersect)) {
+                draggedMesh.position.x = planeIntersect.x + dragOffset.x;
+                draggedMesh.position.z = planeIntersect.z + dragOffset.z;
+            }
+        }
+
+        function handleEnd() {
+            if (!isDragging || !draggedMesh) return;
+            isDragging = false;
+            hideToast();
+
+            let closestPallet = null, minDistance = Infinity;
+            palletsData.forEach((pallet, pIndex) => {
+                const col = pIndex % GRID_COLS, row = Math.floor(pIndex / GRID_COLS);
+                const posX = (col - 1) * SPACING_X, posZ = row * SPACING_Z;
+                const distance = Math.hypot(draggedMesh.position.x - posX, draggedMesh.position.z - posZ);
+                if (distance < minDistance) { minDistance = distance; closestPallet = pallet; }
+            });
+
+            if (closestPallet && minDistance < 3.2) {
+                const pIdx = palletsData.findIndex(p => p.id === closestPallet.id);
+                const col = pIdx % GRID_COLS, row = Math.floor(pIdx / GRID_COLS);
+                const palletCenterX = (col - 1) * SPACING_X, palletCenterZ = row * SPACING_Z;
+
+                let closestSlot = 0, minSlotDist = Infinity;
+                LOCAL_SLOT_OFFSETS.forEach((slotOffset, sIdx) => {
+                    const d = Math.hypot(draggedMesh.position.x - (palletCenterX + slotOffset.x), draggedMesh.position.z - (palletCenterZ + slotOffset.z));
+                    if (d < minSlotDist) { minSlotDist = d; closestSlot = sIdx; }
+                });
+
+                transferBox(draggedMesh.userData.palletId, closestPallet.id, draggedMesh.userData.boxId, closestSlot);
+            } else {
+                draggedMesh.position.copy(originalBoxPosition);
+            }
+            draggedMesh = null;
+        }
+
+        function transferBox(fromP, toP, boxId, newSlot) {
+            let movedBox = null;
+            const src = palletsData.find(p => p.id === fromP);
+            if (src && src.boxes) {
+                src.boxes = src.boxes.filter(b => {
+                    if (b.id === boxId) { movedBox = b; return false; }
+                    return true;
+                });
+            }
+            const tgt = palletsData.find(p => p.id === toP);
+            if (tgt && movedBox) {
+                movedBox.slot = newSlot;
+                if (!tgt.boxes) tgt.boxes = [];
+                tgt.boxes.push(movedBox);
+                saveData();
+            }
+        }
+
+        function showToast(text) {
+            const t = document.getElementById('drag-toast');
+            document.getElementById('drag-toast-text').textContent = text;
+            t.classList.remove('opacity-0', '-translate-y-2');
+            t.classList.add('opacity-100', 'translate-y-0');
+        }
+
+        function hideToast() {
+            const t = document.getElementById('drag-toast');
+            t.classList.remove('opacity-100', 'translate-y-0');
+            t.classList.add('opacity-0', '-translate-y-2');
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            if (controls && currentMode === 'rotate') controls.update();
+
+            searchPulseTime += 0.05;
+            const query = document.getElementById('search-input')?.value.trim().toLowerCase() || '';
+
+            boxMeshMap.forEach((mesh, boxId) => {
+                if (mesh === draggedMesh) return;
+                if (query.length > 0) {
+                    if (highlightedBoxIds.has(boxId)) {
+                        mesh.material.color.setHex(0xfacc15);
+                        mesh.material.opacity = 1.0;
+                    } else {
+                        mesh.material.color.setHex(mesh.userData.originalColor);
+                        mesh.material.opacity = 0.2;
+                    }
+                } else {
+                    mesh.material.color.setHex(mesh.userData.originalColor);
+                    mesh.material.opacity = 1.0;
+                }
+            });
+
+            if (renderer && scene && camera) renderer.render(scene, camera);
+        }
+
+        let searchPulseTime = 0;
+
+        function updateAll() {
+            render3DScene();
+            updateUI();
+            handleSearch();
+        }
+
+        function updateUI() {
+            const selectPallet = document.getElementById('select-pallet');
+            if (!selectPallet) return;
+            selectPallet.innerHTML = '';
+
+            if (palletsData.length === 0) {
+                selectPallet.add(new Option('-- เพิ่มพาเลทก่อน --', ''));
+            } else {
+                palletsData.forEach(p => selectPallet.add(new Option(`${p.name} (${p.boxes?.length || 0} ลัง)`, p.id)));
+            }
+
+            document.getElementById('pallet-count-badge').textContent = `${palletsData.length} พาเลท`;
+            const container = document.getElementById('pallet-list-container');
+            container.innerHTML = '';
+
+            palletsData.forEach((pallet) => {
+                const card = document.createElement('div');
+                card.className = "bg-slate-900/60 border border-slate-800/80 rounded-2xl p-3 flex flex-col gap-2.5 transition";
+
+                const boxCount = pallet.boxes?.length || 0;
+                let boxesHTML = boxCount === 0 ? `<p class="text-xs text-slate-500 italic py-1">ไม่มีลังในพาเลทนี้</p>` : '';
+
+                if (boxCount > 0) {
+                    const slotCounts = [0, 0, 0, 0];
+                    boxesHTML = pallet.boxes.map((b) => {
+                        const slotIdx = b.slot !== undefined ? b.slot : 0;
+                        const code = `${pallet.id}-S${slotIdx + 1}-L${slotCounts[slotIdx] + 1}`;
+                        slotCounts[slotIdx]++;
+
+                        return `
+                            <div class="flex justify-between items-center bg-slate-900/90 px-3 py-2 rounded-xl border border-slate-800">
+                                <div class="truncate mr-2">
+                                    <span class="text-slate-200 font-semibold text-xs truncate block">${b.label}</span>
+                                    <span class="text-[10px] text-amber-400 font-mono font-medium">[${code}]</span>
+                                </div>
+                                <div class="flex items-center gap-1.5 shrink-0">
+                                    <button onclick="moveBoxPrompt('${pallet.id}', '${b.id}')" class="bg-indigo-950/60 text-indigo-400 hover:text-indigo-300 p-2 rounded-lg border border-indigo-800/40 active:scale-90"><i data-lucide="repeat" class="w-4 h-4"></i></button>
+                                    <button onclick="removeBox('${pallet.id}', '${b.id}')" class="bg-rose-950/60 text-rose-400 hover:text-rose-300 p-2 rounded-lg border border-rose-800/40 active:scale-90"><i data-lucide="x" class="w-4 h-4"></i></button>
+                                </div>
+                            </div>
+                        `;
+                    }).join('');
+                }
+
+                card.innerHTML = `
+                    <div class="flex justify-between items-center border-b border-slate-800/80 pb-2">
+                        <div>
+                            <h3 class="text-xs font-bold text-slate-100">${pallet.name}</h3>
+                            <p class="text-[10px] text-slate-400 font-medium">${boxCount} ลังเอกสาร</p>
+                        </div>
+                        <div class="flex items-center gap-1">
+                            <button onclick="focusPallet('${pallet.id}')" class="p-2 text-slate-400 hover:text-indigo-400 active:scale-90 transition"><i data-lucide="eye" class="w-4.5 h-4.5"></i></button>
+                            <button onclick="removePallet('${pallet.id}')" class="p-2 text-slate-400 hover:text-rose-400 active:scale-90 transition"><i data-lucide="trash" class="w-4.5 h-4.5"></i></button>
+                        </div>
+                    </div>
+                    <div class="flex flex-col gap-2 max-h-36 overflow-y-auto custom-scrollbar pr-0.5">
+                        ${boxesHTML}
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+            renderIcons();
+        }
+
+        function switchTab(tab) {
+            const btnAdd = document.getElementById('tab-btn-add');
+            const btnList = document.getElementById('tab-btn-list');
+            const contentAdd = document.getElementById('tab-content-add');
+            const contentList = document.getElementById('tab-content-list');
+
+            if (tab === 'add') {
+                btnAdd.className = "py-2.5 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition bg-indigo-600 text-white shadow";
+                btnList.className = "py-2.5 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition text-slate-400 hover:text-white";
+                contentAdd.classList.remove('hidden');
+                contentAdd.classList.add('flex');
+                contentList.classList.add('hidden');
+                contentList.classList.remove('flex');
+            } else {
+                btnList.className = "py-2.5 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition bg-indigo-600 text-white shadow";
+                btnAdd.className = "py-2.5 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition text-slate-400 hover:text-white";
+                contentList.classList.remove('hidden');
+                contentList.classList.add('flex');
+                contentAdd.classList.add('hidden');
+                contentAdd.classList.remove('flex');
+            }
+        }
+
+        function addPallet() {
+            showCustomPrompt("เพิ่มพาเลทใหม่", "ระบุชื่อพาเลทหรือโซนจัดเก็บ:", `พาเลท ${String.fromCharCode(65 + palletsData.length)}`, (name) => {
+                if (!name) return;
+                palletsData.push({ id: 'P' + (palletsData.length + 1), name: name.trim(), boxes: [] });
+                saveData();
+            });
+        }
+
+        function removePallet(id) {
+            if (!confirm("ลบพาเลทนี้พร้อมกล่องทั้งหมด?")) return;
+            palletsData = palletsData.filter(p => p.id !== id);
+            saveData();
+        }
+
+        function addBox() {
+            const palletId = document.getElementById('select-pallet').value;
+            const slotIdx = parseInt(document.getElementById('select-slot').value, 10);
+            const label = document.getElementById('input-box-label').value.trim();
+
+            if (!palletId) { alert("กรุณาเพิ่มพาเลทก่อน"); return; }
+            if (!label) { alert("กรุณากรอกชื่อข้างกล่อง"); return; }
+
+            const pallet = palletsData.find(p => p.id === palletId);
+            if (pallet) {
+                if (!pallet.boxes) pallet.boxes = [];
+                pallet.boxes.push({ id: 'B_' + Date.now(), label, slot: slotIdx });
+                document.getElementById('input-box-label').value = '';
+                saveData();
+            }
+        }
+
+        function removeBox(palletId, boxId) {
+            const pallet = palletsData.find(p => p.id === palletId);
+            if (pallet && pallet.boxes) {
+                pallet.boxes = pallet.boxes.filter(b => b.id !== boxId);
+                saveData();
+            }
+        }
+
+        function moveBoxPrompt(fromP, boxId) {
+            showCustomPrompt("ย้ายตำแหน่งกล่อง", "ระบุ ID หรือชื่อพาเลทปลายทาง:", palletsData[0]?.id || "", (targetId) => {
+                if (!targetId) return;
+                const tgt = palletsData.find(p => p.id === targetId || p.name.includes(targetId));
+                if (!tgt) { alert("ไม่พบพาเลทปลายทาง"); return; }
+                
+                showCustomPrompt("เลือกช่องวาง", "เลือกช่องบนพาเลทใหม่ (กรอกเลข 1, 2, 3 หรือ 4):", "1", (slotStr) => {
+                    const slot = parseInt(slotStr, 10) - 1;
+                    transferBox(fromP, tgt.id, boxId, Math.max(0, Math.min(3, slot || 0)));
+                });
+            });
+        }
+
+        function handleSearch() {
+            const searchInput = document.getElementById('search-input');
+            const searchClear = document.getElementById('search-clear');
+            const resultsList = document.getElementById('search-results-list');
+            if (!searchInput) return;
+
+            const query = searchInput.value.trim().toLowerCase();
+            highlightedBoxIds.clear();
+            resultsList.innerHTML = '';
+
+            if (query.length > 0) {
+                searchClear.classList.remove('hidden');
+                resultsList.classList.remove('hidden');
+                let match = 0;
+
+                palletsData.forEach(pallet => {
+                    const slotCounts = [0, 0, 0, 0];
+                    (pallet.boxes || []).forEach(box => {
+                        const sIdx = box.slot !== undefined ? box.slot : 0;
+                        const code = `${pallet.id}-S${sIdx + 1}-L${slotCounts[sIdx] + 1}`.toLowerCase();
+                        slotCounts[sIdx]++;
+
+                        if (box.label.toLowerCase().includes(query) || code.includes(query)) {
+                            highlightedBoxIds.add(box.id);
+                            match++;
+                            const item = document.createElement('div');
+                            item.className = "flex justify-between items-center bg-slate-900/90 hover:bg-slate-800 px-3 py-2 rounded-xl text-xs cursor-pointer transition border border-slate-800";
+                            item.onclick = () => focusPallet(pallet.id);
+                            item.innerHTML = `<span class="text-amber-300 font-semibold">${box.label} <span class="text-[10px] text-cyan-400 font-mono">[${code.toUpperCase()}]</span></span><i data-lucide="target" class="w-4 h-4 text-indigo-400"></i>`;
+                            resultsList.appendChild(item);
+                        }
+                    });
+                });
+                if (match === 0) resultsList.innerHTML = `<p class="text-xs text-slate-500 italic p-1 text-center">ไม่พบผลการค้นหา</p>`;
+            } else {
+                searchClear.classList.add('hidden');
+                resultsList.classList.add('hidden');
+            }
+            renderIcons();
+        }
+
+        function focusPallet(palletId) {
+            const pIdx = palletsData.findIndex(p => p.id === palletId);
+            if (pIdx === -1) return;
+            const targetX = ((pIdx % GRID_COLS) - 1) * SPACING_X;
+            const targetZ = Math.floor(pIdx / GRID_COLS) * SPACING_Z;
+
+            gsap.to(camera.position, { x: targetX, y: 8, z: targetZ + 12, duration: 1, ease: "power2.inOut" });
+            gsap.to(controls.target, { x: targetX, y: 1.5, z: targetZ, duration: 1, ease: "power2.inOut" });
+        }
+
+        function exportJSON() {
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(palletsData, null, 2));
+            const a = document.createElement('a');
+            a.setAttribute("href", dataStr);
+            a.setAttribute("download", `warehouse_${new Date().toISOString().slice(0,10)}.json`);
+            document.body.appendChild(a); a.click(); a.remove();
+        }
+
+        function importJSON(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function(evt) {
+                try {
+                    const data = JSON.parse(evt.target.result);
+                    if (Array.isArray(data)) { palletsData = data; saveData(); alert("นำเข้าข้อมูลสำเร็จ!"); }
+                } catch(err) { alert("ไฟล์ JSON ไม่ถูกต้อง"); }
+            };
+            reader.readAsText(file);
+        }
+
+        function clearAllData() {
+            if (confirm("ล้างข้อมูลทั้งหมดในคลัง?")) { palletsData = []; saveData(); }
+        }
+
+        function setMode(mode) {
+            currentMode = mode;
+            const btnR = document.getElementById('btn-mode-rotate');
+            const btnD = document.getElementById('btn-mode-drag');
+            if (mode === 'rotate') {
+                controls.enabled = true;
+                btnR.className = "px-3 py-2 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition bg-indigo-600 text-white shadow";
+                btnD.className = "px-3 py-2 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition text-slate-400 hover:text-white";
+            } else {
+                controls.enabled = false;
+                btnD.className = "px-3 py-2 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition bg-indigo-600 text-white shadow";
+                btnR.className = "px-3 py-2 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition text-slate-400 hover:text-white";
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            init3D();
+            initFirebase();
+
+            document.getElementById('tab-btn-add').addEventListener('click', () => switchTab('add'));
+            document.getElementById('tab-btn-list').addEventListener('click', () => switchTab('list'));
+
+            document.getElementById('btn-mode-rotate').addEventListener('click', () => setMode('rotate'));
+            document.getElementById('btn-mode-drag').addEventListener('click', () => setMode('drag'));
+            document.getElementById('btn-add-pallet').addEventListener('click', addPallet);
+            document.getElementById('btn-add-box').addEventListener('click', addBox);
+            
+            const searchInput = document.getElementById('search-input');
+            const searchClear = document.getElementById('search-clear');
+            searchInput.addEventListener('input', handleSearch);
+            searchClear.addEventListener('click', () => { searchInput.value = ''; handleSearch(); });
+            searchInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') addBox(); });
+
+            document.getElementById('btn-export').addEventListener('click', exportJSON);
+            document.getElementById('btn-import-trigger').addEventListener('click', () => document.getElementById('file-import').click());
+            document.getElementById('file-import').addEventListener('change', importJSON);
+            document.getElementById('btn-clear-all').addEventListener('click', clearAllData);
+
+            renderIcons();
+        });
     </script>
 </body>
 </html>
