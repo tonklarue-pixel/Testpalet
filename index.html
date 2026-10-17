@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>3D Pallet & File Box Manager (Free 3D Drag & Drop)</title>
+    <title>3D Pallet & File Box Manager (Ultra Light & Smooth)</title>
     
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -68,7 +68,7 @@
     <div id="drag-toast" class="fixed top-20 left-1/2 -translate-x-1/2 z-50 pointer-events-none transition-all duration-300 opacity-0 transform -translate-y-2">
         <div class="bg-indigo-600/90 backdrop-blur-md text-white text-xs font-semibold px-4 py-2 rounded-full shadow-2xl flex items-center gap-2 border border-indigo-400/40">
             <span class="w-2 h-2 rounded-full bg-cyan-400 animate-ping"></span>
-            <span id="drag-toast-text">กำลังลากกล่อง... วางลงบนพาเลทเป้าหมาย</span>
+            <span id="drag-toast-text">กำลังลากกล่อง...</span>
         </div>
     </div>
 
@@ -85,7 +85,7 @@
                     <h1 class="font-bold text-lg leading-tight bg-gradient-to-r from-indigo-300 via-cyan-300 to-emerald-300 bg-clip-text text-transparent">
                         ระบบจัดเรียงและย้ายกล่อง 3D
                     </h1>
-                    <p class="text-xs text-slate-400">ลากย้ายกล่องอิสระทุกชั้น • 60+ FPS High Performance</p>
+                    <p class="text-xs text-slate-400">ลากย้ายกล่องอิสระ • Ultra Smooth 60+ FPS</p>
                 </div>
             </div>
 
@@ -163,10 +163,10 @@
                 <!-- Guidance Info -->
                 <div class="text-[11px] text-slate-400 bg-slate-900/40 p-3 rounded-xl border border-slate-800/80 flex flex-col gap-1">
                     <div class="font-medium text-amber-300 flex items-center gap-1">
-                        <i data-lucide="move" class="w-3.5 h-3.5"></i> การลากย้ายกล่อง 3D อิสระ:
+                        <i data-lucide="move" class="w-3.5 h-3.5"></i> วิธีลากย้ายกล่อง:
                     </div>
-                    <div>• คลิกค้างที่กล่องใบใดก็ได้ (แม้กล่องจะซ้อนอยู่บนสุด) แล้วลากย้ายไปพาเลทอื่นได้ทันที</div>
-                    <div>• ปล่อยเมาส์เพื่อวาง กล่องจะลงล็อกตาราง 2x2 และซ้อนความสูงให้อัตโนมัติ</div>
+                    <div>• คลิกค้างที่กล่องเพื่อลากลอยย้ายไปยังพาเลทอื่นได้อย่างอิสระ</div>
+                    <div>• หากเครื่องช้าหรือค้าง สามารถใช้ปุ่ม 🔄 ในการ์ดด้านขวาเพื่อย้ายกล่องได้เช่นกัน</div>
                 </div>
 
             </div>
@@ -197,7 +197,6 @@
             }
         }
 
-        // Firebase Configuration
         const firebaseConfig = {
             apiKey: "AIzaSyBX_HkxQttRGlZ81UaE3fsWtJLQb9MBQqw",
             authDomain: "gen-lang-client-0163925046.firebaseapp.com",
@@ -214,20 +213,17 @@
         let highlightedBoxIds = new Set();
         let searchPulseTime = 0;
 
-        // 3D & Performance Engine Variables
         let scene, camera, renderer, controls, raycaster, mouse;
         let pallet3DGroup = new THREE.Group();
         let boxMeshMap = new Map();
-        let textureCache = new Map(); // Texture Caching for 60+ FPS Performance
+        let textureCache = new Map();
 
-        // 3D Drag & Drop Variables
         let isDragging = false;
         let draggedMesh = null;
         let dragPlane = new THREE.Plane();
         let planeIntersect = new THREE.Vector3();
         let dragOffset = new THREE.Vector3();
         let originalBoxPosition = new THREE.Vector3();
-        let activeHoverMesh = null;
 
         const PALLET_WIDTH = 3.6;
         const PALLET_LENGTH = 3.6;
@@ -334,7 +330,6 @@
             updateAll();
         }
 
-        // Optimized 3D Scene Initialization for High Frame Rates
         function init3D() {
             const container = document.getElementById('canvas-container');
             
@@ -345,40 +340,26 @@
             camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
             camera.position.set(0, 18, 26);
 
-            renderer = new THREE.WebGLRenderer({ 
-                antialias: true,
-                powerPreference: "high-performance",
-                precision: "mediump"
-            });
+            renderer = new THREE.WebGLRenderer({ antialias: false, powerPreference: "high-performance" });
             renderer.setSize(window.innerWidth, window.innerHeight);
-            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5)); // High performance cap
-            renderer.shadowMap.enabled = true;
-            renderer.shadowMap.type = THREE.BasicShadowMap; // Optimized light shadows
+            renderer.setPixelRatio(1); // Set to 1 for maximum speed
+            renderer.shadowMap.enabled = false; // Turn off dynamic shadows for zero lag
             container.appendChild(renderer.domElement);
 
             controls = new THREE.OrbitControls(camera, renderer.domElement);
             controls.enableDamping = true;
-            controls.dampingFactor = 0.05;
+            controls.dampingFactor = 0.08;
             controls.maxPolarAngle = Math.PI / 2 - 0.05;
-            controls.minDistance = 5;
-            controls.maxDistance = 60;
 
             raycaster = new THREE.Raycaster();
             mouse = new THREE.Vector2();
 
-            const ambientLight = new THREE.AmbientLight(0xffffff, 0.75);
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.85);
             scene.add(ambientLight);
 
-            const dirLight = new THREE.DirectionalLight(0xffffff, 0.85);
+            const dirLight = new THREE.DirectionalLight(0xffffff, 0.6);
             dirLight.position.set(15, 25, 15);
-            dirLight.castShadow = true;
-            dirLight.shadow.mapSize.width = 1024;
-            dirLight.shadow.mapSize.height = 1024;
             scene.add(dirLight);
-
-            const fillLight = new THREE.DirectionalLight(0x38bdf8, 0.35);
-            fillLight.position.set(-15, 10, -15);
-            scene.add(fillLight);
 
             const gridHelper = new THREE.GridHelper(60, 30, 0x38bdf8, 0x1e293b);
             gridHelper.position.y = -0.01;
@@ -386,7 +367,6 @@
 
             scene.add(pallet3DGroup);
 
-            // Pointer Event Listeners for 3D Drag & Drop
             const dom = renderer.domElement;
             dom.addEventListener('pointerdown', onPointerDown);
             dom.addEventListener('pointermove', onPointerMove);
@@ -402,30 +382,29 @@
             renderer.setSize(window.innerWidth, window.innerHeight);
         }
 
-        // Texture Canvas Caching (Prevents lag when creating dynamic text)
         function getCachedLabelTexture(text) {
             if (textureCache.has(text)) {
                 return textureCache.get(text);
             }
 
             const canvas = document.createElement('canvas');
-            canvas.width = 256;
-            canvas.height = 128;
+            canvas.width = 128;
+            canvas.height = 64;
             const ctx = canvas.getContext('2d');
 
             ctx.fillStyle = '#ffffff';
-            ctx.fillRect(0, 0, 256, 128);
-            ctx.lineWidth = 8;
+            ctx.fillRect(0, 0, 128, 64);
+            ctx.lineWidth = 4;
             ctx.strokeStyle = '#0284c7';
-            ctx.strokeRect(0, 0, 256, 128);
+            ctx.strokeRect(0, 0, 128, 64);
 
             ctx.fillStyle = '#0f172a';
-            ctx.font = 'bold 24px Prompt, sans-serif';
+            ctx.font = 'bold 12px sans-serif';
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
             
-            const truncatedText = text.length > 14 ? text.substring(0, 12) + '...' : text;
-            ctx.fillText(truncatedText, 128, 64);
+            const truncatedText = text.length > 10 ? text.substring(0, 8) + '..' : text;
+            ctx.fillText(truncatedText, 64, 32);
 
             const texture = new THREE.CanvasTexture(canvas);
             textureCache.set(text, texture);
@@ -445,13 +424,10 @@
                 const posX = (col - 1) * SPACING_X;
                 const posZ = row * SPACING_Z;
 
-                // Create Pallet Mesh
                 const palletMesh = createPalletMesh(PALLET_WIDTH, PALLET_HEIGHT, PALLET_LENGTH);
                 palletMesh.position.set(posX, PALLET_HEIGHT / 2, posZ);
-                palletMesh.userData = { palletId: pallet.id, isPallet: true };
                 pallet3DGroup.add(palletMesh);
 
-                // Create Box Meshes
                 (pallet.boxes || []).forEach((box, bIndex) => {
                     const layerIndex = Math.floor(bIndex / 4);
                     const slotIndex = bIndex % 4;
@@ -469,8 +445,6 @@
                         palletId: pallet.id, 
                         label: box.label,
                         originalColor: colorHex,
-                        layerIndex: layerIndex,
-                        slotIndex: slotIndex,
                         isBox: true
                     };
 
@@ -482,7 +456,7 @@
 
         function createPalletMesh(w, h, l) {
             const group = new THREE.Group();
-            const woodMat = new THREE.MeshStandardMaterial({ color: 0xc2410c, roughness: 0.8 });
+            const woodMat = new THREE.MeshLambertMaterial({ color: 0xc2410c });
 
             const plankCount = 5;
             const plankWidth = w / plankCount - 0.05;
@@ -491,16 +465,12 @@
                 const plank = new THREE.Mesh(plankGeo, woodMat);
                 plank.position.x = -w/2 + plankWidth/2 + i * (plankWidth + 0.05);
                 plank.position.y = h/2 - 0.04;
-                plank.castShadow = true;
-                plank.receiveShadow = true;
                 group.add(plank);
             }
 
             const blockGeo = new THREE.BoxGeometry(w, h - 0.08, l * 0.2);
             const block = new THREE.Mesh(blockGeo, woodMat);
             block.position.y = -0.04;
-            block.castShadow = true;
-            block.receiveShadow = true;
             group.add(block);
 
             return group;
@@ -508,20 +478,16 @@
 
         function createBoxMesh(w, h, l, colorHex, labelText) {
             const geometry = new THREE.BoxGeometry(w, h, l);
-            const material = new THREE.MeshStandardMaterial({
+            const material = new THREE.MeshLambertMaterial({
                 color: colorHex,
-                roughness: 0.35,
-                metalness: 0.1,
                 transparent: true,
                 opacity: 1.0
             });
 
             const mesh = new THREE.Mesh(geometry, material);
-            mesh.castShadow = true;
-            mesh.receiveShadow = true;
 
             const edges = new THREE.EdgesGeometry(geometry);
-            const lineMat = new THREE.LineBasicMaterial({ color: 0x0f172a, linewidth: 2 });
+            const lineMat = new THREE.LineBasicMaterial({ color: 0x0f172a });
             const line = new THREE.LineSegments(edges, lineMat);
             mesh.add(line);
 
@@ -533,17 +499,12 @@
             labelFront.position.z = l / 2 + 0.01;
             mesh.add(labelFront);
 
-            const labelBack = new THREE.Mesh(labelGeo, labelMat);
-            labelBack.position.z = -(l / 2 + 0.01);
-            labelBack.rotation.y = Math.PI;
-            mesh.add(labelBack);
-
             return mesh;
         }
 
-        // --- Free 3D Drag & Drop Engine Core ---
+        // Lightweight Drag & Drop Handlers
         function onPointerDown(event) {
-            if (event.button !== 0) return; // Only left click
+            if (event.button !== 0) return;
 
             mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
             mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
@@ -560,53 +521,33 @@
                 if (obj && obj.userData.isBox) {
                     isDragging = true;
                     draggedMesh = obj;
-                    controls.enabled = false; // Disable Orbit Controls while dragging
+                    controls.enabled = false;
 
                     originalBoxPosition.copy(draggedMesh.position);
-
-                    // Create dynamic horizontal drag plane at box height
                     dragPlane.setFromNormalAndCoplanarPoint(new THREE.Vector3(0, 1, 0), draggedMesh.position);
 
                     if (raycaster.ray.intersectPlane(dragPlane, planeIntersect)) {
                         dragOffset.subVectors(draggedMesh.position, planeIntersect);
                     }
 
-                    // Visual feedback during pick up
                     document.body.classList.add('dragging-active');
                     showDragToast(`กำลังย้าย: ${draggedMesh.userData.label}`);
-                    
-                    gsap.to(draggedMesh.scale, { x: 1.15, y: 1.15, z: 1.15, duration: 0.2 });
-                    gsap.to(draggedMesh.position, { y: draggedMesh.position.y + 0.5, duration: 0.2 });
+                    draggedMesh.position.y += 0.4;
                 }
             }
         }
 
         function onPointerMove(event) {
+            if (!isDragging || !draggedMesh) return;
+
             mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
             mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
 
             raycaster.setFromCamera(mouse, camera);
 
-            if (isDragging && draggedMesh) {
-                // Free 3D dragging across horizontal plane
-                if (raycaster.ray.intersectPlane(dragPlane, planeIntersect)) {
-                    draggedMesh.position.x = planeIntersect.x + dragOffset.x;
-                    draggedMesh.position.z = planeIntersect.z + dragOffset.z;
-                }
-            } else {
-                // Hover effect for clickable/draggable boxes
-                const intersects = raycaster.intersectObjects(pallet3DGroup.children, true);
-                if (intersects.length > 0) {
-                    let obj = intersects[0].object;
-                    while (obj && !obj.userData.isBox && obj.parent && obj !== pallet3DGroup) {
-                        obj = obj.parent;
-                    }
-                    if (obj && obj.userData.isBox) {
-                        document.body.style.cursor = 'grab';
-                        return;
-                    }
-                }
-                document.body.style.cursor = 'default';
+            if (raycaster.ray.intersectPlane(dragPlane, planeIntersect)) {
+                draggedMesh.position.x = planeIntersect.x + dragOffset.x;
+                draggedMesh.position.z = planeIntersect.z + dragOffset.z;
             }
         }
 
@@ -618,7 +559,6 @@
             document.body.classList.remove('dragging-active');
             hideDragToast();
 
-            // Find closest pallet for drop location
             let closestPallet = null;
             let minDistance = Infinity;
 
@@ -635,33 +575,18 @@
                 }
             });
 
-            // Threshold radius to snap onto a pallet
             if (closestPallet && minDistance < 3.2) {
-                const sourcePalletId = draggedMesh.userData.palletId;
-                const targetPalletId = closestPallet.id;
-                const boxId = draggedMesh.userData.boxId;
-
-                transferBoxToPallet(sourcePalletId, targetPalletId, boxId);
+                transferBoxToPallet(draggedMesh.userData.palletId, closestPallet.id, draggedMesh.userData.boxId);
             } else {
-                // Return smoothly if dropped outside pallets
-                gsap.to(draggedMesh.position, {
-                    x: originalBoxPosition.x,
-                    y: originalBoxPosition.y,
-                    z: originalBoxPosition.z,
-                    duration: 0.4,
-                    ease: "back.out(1.4)"
-                });
-                gsap.to(draggedMesh.scale, { x: 1, y: 1, z: 1, duration: 0.3 });
+                draggedMesh.position.copy(originalBoxPosition);
             }
 
             draggedMesh = null;
         }
 
-        // Logic to move box between pallets and re-stack
         function transferBoxToPallet(fromPalletId, toPalletId, boxId) {
             let movedBox = null;
 
-            // Remove from source pallet
             const sourcePallet = palletsData.find(p => p.id === fromPalletId);
             if (sourcePallet && sourcePallet.boxes) {
                 sourcePallet.boxes = sourcePallet.boxes.filter(b => {
@@ -673,7 +598,6 @@
                 });
             }
 
-            // Append to target pallet
             const targetPallet = palletsData.find(p => p.id === toPalletId);
             if (targetPallet && movedBox) {
                 if (!targetPallet.boxes) targetPallet.boxes = [];
@@ -703,23 +627,18 @@
             const searchInput = document.getElementById('search-input');
             const query = searchInput ? searchInput.value.trim().toLowerCase() : '';
 
-            // 3D Pulse animation for search matching boxes
             boxMeshMap.forEach((mesh, boxId) => {
-                if (mesh === draggedMesh) return; // Skip currently dragged box
+                if (mesh === draggedMesh) return;
 
                 if (query.length > 0) {
                     if (highlightedBoxIds.has(boxId)) {
-                        const scaleFactor = 1 + Math.sin(searchPulseTime * 4) * 0.03;
-                        mesh.scale.set(scaleFactor, scaleFactor, scaleFactor);
                         mesh.material.color.setHex(0xfacc15);
                         mesh.material.opacity = 1.0;
                     } else {
-                        mesh.scale.set(1, 1, 1);
                         mesh.material.color.setHex(mesh.userData.originalColor);
                         mesh.material.opacity = 0.25;
                     }
                 } else {
-                    mesh.scale.set(1, 1, 1);
                     mesh.material.color.setHex(mesh.userData.originalColor);
                     mesh.material.opacity = 1.0;
                 }
@@ -951,7 +870,7 @@
             focusPallet(palletId);
             const mesh = boxMeshMap.get(boxId);
             if (mesh) {
-                gsap.to(mesh.scale, { x: 1.25, y: 1.25, z: 1.25, yoyo: true, repeat: 1, duration: 0.3 });
+                gsap.to(mesh.scale, { x: 1.2, y: 1.2, z: 1.2, yoyo: true, repeat: 1, duration: 0.3 });
             }
         }
 
