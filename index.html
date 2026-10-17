@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>3D Pallet & File Box Stacking Manager (Cloud Live + Search)</title>
+    <title>3D Pallet & File Box Stacking Manager</title>
     
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -52,9 +52,6 @@
             background: rgba(51, 65, 85, 0.8);
             border-radius: 3px;
         }
-        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-            background: rgba(100, 116, 139, 1);
-        }
     </style>
 </head>
 <body class="relative min-h-screen">
@@ -69,7 +66,7 @@
         <div class="flex flex-wrap justify-between items-center gap-4 pointer-events-auto">
             <div class="glass-panel px-5 py-3 rounded-2xl flex items-center gap-3 shadow-2xl">
                 <div class="p-2 bg-indigo-600 rounded-xl">
-                    <i data-lucide="boxes" class="w-6 h-6 text-white"></i>
+                    <i data-lucide="boxes" class="w-6 h-6 text-white">📦</i>
                 </div>
                 <div>
                     <h1 class="font-bold text-lg leading-tight bg-gradient-to-r from-indigo-400 to-cyan-400 bg-clip-text text-transparent">
@@ -88,14 +85,14 @@
 
                 <div class="glass-panel p-1.5 rounded-xl flex items-center gap-1 shadow-lg">
                     <button id="btn-export" title="ส่งออก JSON" class="p-2 hover:bg-slate-700/60 rounded-lg text-slate-300 hover:text-white transition">
-                        <i data-lucide="download" class="w-4 h-4"></i>
+                        <i data-lucide="download" class="w-4 h-4">📥</i>
                     </button>
                     <button id="btn-import-trigger" title="นำเข้า JSON" class="p-2 hover:bg-slate-700/60 rounded-lg text-slate-300 hover:text-white transition">
-                        <i data-lucide="upload" class="w-4 h-4"></i>
+                        <i data-lucide="upload" class="w-4 h-4">📤</i>
                     </button>
                     <input type="file" id="file-import" accept=".json" class="hidden">
                     <button id="btn-clear-all" title="ล้างข้อมูลทั้งหมด" class="p-2 hover:bg-rose-900/40 text-rose-400 hover:text-rose-300 rounded-lg transition">
-                        <i data-lucide="trash-2" class="w-4 h-4"></i>
+                        <i data-lucide="trash-2" class="w-4 h-4">🗑️</i>
                     </button>
                 </div>
             </div>
@@ -104,19 +101,19 @@
         <!-- Sidebar / Bottom Controls -->
         <div class="grid grid-cols-1 md:grid-cols-12 gap-4 pointer-events-auto items-end pb-2">
             
-            <!-- Left Control Panel: Add Pallet & Boxes + Search -->
+            <!-- Left Control Panel -->
             <div class="md:col-span-5 lg:col-span-4 glass-panel p-5 rounded-2xl shadow-2xl flex flex-col gap-4 max-h-[80vh] overflow-y-auto custom-scrollbar">
                 
-                <!-- Search Box Feature -->
+                <!-- Search Box -->
                 <div class="flex flex-col gap-2 border-b border-slate-700/60 pb-4">
                     <label class="text-xs font-semibold text-cyan-400 flex items-center gap-1.5">
-                        <i data-lucide="search" class="w-3.5 h-3.5"></i> ค้นหาชื่อข้างกล่อง
+                        <i data-lucide="search" class="w-3.5 h-3.5">🔍</i> ค้นหาชื่อข้างกล่อง
                     </label>
                     <div class="relative">
                         <input type="text" id="search-input" placeholder="พิมพ์ชื่อกล่องเพื่อไฮไลต์ 3D..." 
                             class="w-full bg-slate-900/80 border border-slate-700 rounded-xl px-3.5 py-2 text-sm text-white focus:outline-none focus:border-cyan-500 pr-8 transition">
                         <button id="search-clear" class="absolute right-2.5 top-2.5 text-slate-400 hover:text-white hidden">
-                            <i data-lucide="x" class="w-4 h-4"></i>
+                            <i data-lucide="x" class="w-4 h-4">✖</i>
                         </button>
                     </div>
                     <div id="search-results-list" class="flex flex-col gap-1.5 mt-1 max-h-32 overflow-y-auto custom-scrollbar hidden"></div>
@@ -125,13 +122,12 @@
                 <!-- Add Box Form -->
                 <div class="flex flex-col gap-3">
                     <h2 class="text-sm font-semibold text-slate-200 flex items-center gap-2">
-                        <i data-lucide="box" class="w-4 h-4 text-indigo-400"></i> เพิ่มลังแฟ้มลงพาเลท
+                        <i data-lucide="box" class="w-4 h-4 text-indigo-400">📦</i> เพิ่มลังแฟ้มลงพาเลท
                     </h2>
                     
                     <div class="flex flex-col gap-1.5">
                         <label class="text-xs text-slate-400">เลือกพาเลทเป้าหมาย</label>
                         <select id="select-pallet" class="bg-slate-900/80 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-indigo-500 transition">
-                            <!-- Populated dynamically -->
                         </select>
                     </div>
 
@@ -143,10 +139,10 @@
 
                     <div class="grid grid-cols-2 gap-2 pt-1">
                         <button id="btn-add-box" class="bg-indigo-600 hover:bg-indigo-500 active:scale-95 text-white text-sm font-medium py-2.5 px-4 rounded-xl flex items-center justify-center gap-2 transition shadow-lg shadow-indigo-600/30">
-                            <i data-lucide="plus" class="w-4 h-4"></i> เพิ่มกล่อง
+                            <i data-lucide="plus" class="w-4 h-4">➕</i> เพิ่มกล่อง
                         </button>
                         <button id="btn-add-pallet" class="bg-slate-800 hover:bg-slate-700 text-slate-200 text-sm font-medium py-2.5 px-4 rounded-xl border border-slate-700 flex items-center justify-center gap-2 transition">
-                            <i data-lucide="layer-plus" class="w-4 h-4 text-cyan-400"></i> เพิ่มพาเลท
+                            <i data-lucide="layer-plus" class="w-4 h-4 text-cyan-400">🧱</i> เพิ่มพาเลท
                         </button>
                     </div>
                 </div>
@@ -164,7 +160,7 @@
             <div class="md:col-span-7 lg:col-span-8 glass-panel p-5 rounded-2xl shadow-2xl max-h-[40vh] md:max-h-[80vh] overflow-y-auto custom-scrollbar flex flex-col gap-3">
                 <div class="flex justify-between items-center border-b border-slate-700/60 pb-2">
                     <h2 class="text-sm font-semibold text-slate-200 flex items-center gap-2">
-                        <i data-lucide="list" class="w-4 h-4 text-cyan-400"></i> สรุปรายการพาเลทและลังแฟ้ม
+                        <i data-lucide="list" class="w-4 h-4 text-cyan-400">📋</i> สรุปรายการพาเลทและลังแฟ้ม
                     </h2>
                     <span id="pallet-count-badge" class="text-xs bg-indigo-950 text-indigo-300 border border-indigo-800 px-2.5 py-0.5 rounded-full font-medium">
                         0 พาเลท
@@ -172,7 +168,6 @@
                 </div>
 
                 <div id="pallet-list-container" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 pt-1">
-                    <!-- Dynamic Pallet Cards -->
                 </div>
             </div>
 
@@ -181,7 +176,14 @@
 
     <!-- Application Script Logic -->
     <script>
-        // --- 1. Firebase Configuration (Provided Credentials) ---
+        // --- Safe Icon Render Helper ---
+        function renderIcons() {
+            if (typeof lucide !== 'undefined' && lucide.createIcons) {
+                lucide.createIcons();
+            }
+        }
+
+        // --- Firebase Configuration ---
         const firebaseConfig = {
             apiKey: "AIzaSyBX_HkxQttRGlZ81UaE3fsWtJLQb9MBQqw",
             authDomain: "gen-lang-client-0163925046.firebaseapp.com",
@@ -202,47 +204,41 @@
         // 3D Engine Variables
         let scene, camera, renderer, controls;
         let pallet3DGroup = new THREE.Group();
-        let boxMeshMap = new Map(); // box.id -> THREE.Mesh
+        let boxMeshMap = new Map();
 
-        // Layer Color Palette
         const LAYER_COLORS = [
-            0x3b82f6, // Layer 1: Blue
-            0x10b981, // Layer 2: Emerald
-            0xf59e0b, // Layer 3: Amber
-            0x8b5cf6, // Layer 4: Purple
-            0xec4899, // Layer 5: Pink
-            0x06b6d4  // Layer 6+: Cyan
+            0x3b82f6, 0x10b981, 0xf59e0b, 0x8b5cf6, 0xec4899, 0x06b6d4
         ];
 
-        // --- 2. Initialize Firebase Connection ---
+        // --- Initialize Firebase Connection ---
         function initFirebase() {
             const statusBadge = document.getElementById('status-badge');
             try {
-                if (!firebase.apps.length) {
+                if (typeof firebase !== 'undefined' && !firebase.apps.length) {
                     firebase.initializeApp(firebaseConfig);
+                    db = firebase.firestore();
+                    isFirebaseLive = true;
+                    
+                    statusBadge.innerHTML = `
+                        <span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
+                        <span class="text-emerald-400">CLOUD LIVE</span>
+                    `;
+
+                    db.collection('pallet_system').doc('current_state')
+                      .onSnapshot((doc) => {
+                          if (doc.exists && doc.data().pallets) {
+                              palletsData = doc.data().pallets;
+                          } else {
+                              if (palletsData.length === 0) createInitialData();
+                          }
+                          updateAll();
+                      }, (err) => {
+                          console.warn("Firestore listener fallback to local:", err);
+                          enableLocalStorageFallback();
+                      });
+                } else {
+                    enableLocalStorageFallback();
                 }
-                db = firebase.firestore();
-                isFirebaseLive = true;
-                
-                statusBadge.innerHTML = `
-                    <span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
-                    <span class="text-emerald-400">CLOUD LIVE</span>
-                `;
-
-                // Realtime Sync Listener
-                db.collection('pallet_system').doc('current_state')
-                  .onSnapshot((doc) => {
-                      if (doc.exists && doc.data().pallets) {
-                          palletsData = doc.data().pallets;
-                      } else {
-                          if (palletsData.length === 0) createInitialData();
-                      }
-                      updateAll();
-                  }, (err) => {
-                      console.warn("Firestore listener fallback to local:", err);
-                      enableLocalStorageFallback();
-                  });
-
             } catch (error) {
                 console.warn("Firebase Init failed, using Local Storage:", error);
                 enableLocalStorageFallback();
@@ -301,7 +297,7 @@
             updateAll();
         }
 
-        // --- 3. Three.js 3D Scene Setup ---
+        // --- Three.js 3D Scene Setup ---
         function init3D() {
             const container = document.getElementById('canvas-container');
             
@@ -322,33 +318,22 @@
             controls = new THREE.OrbitControls(camera, renderer.domElement);
             controls.enableDamping = true;
             controls.dampingFactor = 0.05;
-            controls.maxPolarAngle = Math.PI / 2 - 0.05; // Prevent camera under floor
+            controls.maxPolarAngle = Math.PI / 2 - 0.05;
             controls.minDistance = 5;
             controls.maxDistance = 60;
 
-            // Lighting Setup
             const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
             scene.add(ambientLight);
 
             const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
             dirLight.position.set(15, 25, 15);
             dirLight.castShadow = true;
-            dirLight.shadow.mapSize.width = 2048;
-            dirLight.shadow.mapSize.height = 2048;
-            dirLight.shadow.camera.near = 0.5;
-            dirLight.shadow.camera.far = 80;
-            const d = 25;
-            dirLight.shadow.camera.left = -d;
-            dirLight.shadow.camera.right = d;
-            dirLight.shadow.camera.top = d;
-            dirLight.shadow.camera.bottom = -d;
             scene.add(dirLight);
 
             const fillLight = new THREE.DirectionalLight(0x38bdf8, 0.3);
             fillLight.position.set(-15, 10, -15);
             scene.add(fillLight);
 
-            // Ground Grid
             const gridHelper = new THREE.GridHelper(60, 30, 0x38bdf8, 0x1e293b);
             gridHelper.position.y = -0.01;
             scene.add(gridHelper);
@@ -365,16 +350,14 @@
             renderer.setSize(window.innerWidth, window.innerHeight);
         }
 
-        // --- 4. Render 3D Objects & Stacking Logic ---
+        // --- Render 3D Objects ---
         function render3DScene() {
-            // Clear existing meshes
             while(pallet3DGroup.children.length > 0) { 
                 const obj = pallet3DGroup.children[0];
                 pallet3DGroup.remove(obj);
             }
             boxMeshMap.clear();
 
-            // Dimensions Setup
             const palletWidth = 3.6;
             const palletLength = 3.6;
             const palletHeight = 0.4;
@@ -384,17 +367,15 @@
             const boxHeight = 1.2;
             const gap = 0.15;
 
-            // Layout 3 Pallets per row in Grid
             const cols = 3;
             const spacingX = 5.5;
             const spacingZ = 5.5;
 
-            // 2x2 Grid Offsets per Pallet Layer
             const localOffsets = [
-                { x: -(boxWidth / 2 + gap / 2), z: -(boxLength / 2 + gap / 2) }, // Slot 1: Top-Left
-                { x:  (boxWidth / 2 + gap / 2), z: -(boxLength / 2 + gap / 2) }, // Slot 2: Top-Right
-                { x: -(boxWidth / 2 + gap / 2), z:  (boxLength / 2 + gap / 2) }, // Slot 3: Bottom-Left
-                { x:  (boxWidth / 2 + gap / 2), z:  (boxLength / 2 + gap / 2) }  // Slot 4: Bottom-Right
+                { x: -(boxWidth / 2 + gap / 2), z: -(boxLength / 2 + gap / 2) },
+                { x:  (boxWidth / 2 + gap / 2), z: -(boxLength / 2 + gap / 2) },
+                { x: -(boxWidth / 2 + gap / 2), z:  (boxLength / 2 + gap / 2) },
+                { x:  (boxWidth / 2 + gap / 2), z:  (boxLength / 2 + gap / 2) }
             ];
 
             palletsData.forEach((pallet, pIndex) => {
@@ -403,13 +384,10 @@
                 const posX = (col - 1) * spacingX;
                 const posZ = row * spacingZ;
 
-                // Build Wooden Pallet Mesh
                 const palletMesh = createPalletMesh(palletWidth, palletHeight, palletLength);
                 palletMesh.position.set(posX, palletHeight / 2, posZ);
-                palletMesh.userData = { palletId: pallet.id };
                 pallet3DGroup.add(palletMesh);
 
-                // Build Boxes on Pallet (4 per layer, then stack)
                 (pallet.boxes || []).forEach((box, bIndex) => {
                     const layerIndex = Math.floor(bIndex / 4);
                     const slotIndex = bIndex % 4;
@@ -426,8 +404,7 @@
                         boxId: box.id, 
                         palletId: pallet.id, 
                         label: box.label,
-                        originalColor: colorHex,
-                        layerIndex: layerIndex + 1
+                        originalColor: colorHex
                     };
 
                     pallet3DGroup.add(boxMesh);
@@ -440,7 +417,6 @@
             const group = new THREE.Group();
             const woodMat = new THREE.MeshStandardMaterial({ color: 0xc2410c, roughness: 0.8 });
 
-            // Top Planks
             const plankCount = 5;
             const plankWidth = w / plankCount - 0.05;
             for(let i=0; i<plankCount; i++) {
@@ -453,7 +429,6 @@
                 group.add(plank);
             }
 
-            // Bottom Support Blocks
             const blockGeo = new THREE.BoxGeometry(w, h - 0.08, l * 0.2);
             const block = new THREE.Mesh(blockGeo, woodMat);
             block.position.y = -0.04;
@@ -476,15 +451,12 @@
 
             const mesh = new THREE.Mesh(geometry, material);
             mesh.castShadow = true;
-            mesh.receiveShadow = true;
 
-            // Black Edges Outline
             const edges = new THREE.EdgesGeometry(geometry);
             const lineMat = new THREE.LineBasicMaterial({ color: 0x0f172a, linewidth: 2 });
             const line = new THREE.LineSegments(edges, lineMat);
             mesh.add(line);
 
-            // Canvas Label Texture on Box Side
             const canvas = document.createElement('canvas');
             canvas.width = 256;
             canvas.height = 128;
@@ -501,7 +473,6 @@
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
             
-            // Text Wrap Handling
             const text = labelText.length > 14 ? labelText.substring(0, 12) + '...' : labelText;
             ctx.fillText(text, 128, 64);
 
@@ -509,12 +480,10 @@
             const labelGeo = new THREE.PlaneGeometry(w * 0.85, h * 0.55);
             const labelMat = new THREE.MeshBasicMaterial({ map: texture, side: THREE.DoubleSide });
 
-            // Front Label
             const labelFront = new THREE.Mesh(labelGeo, labelMat);
             labelFront.position.z = l / 2 + 0.01;
             mesh.add(labelFront);
 
-            // Back Label
             const labelBack = new THREE.Mesh(labelGeo, labelMat);
             labelBack.position.z = -(l / 2 + 0.01);
             labelBack.rotation.y = Math.PI;
@@ -525,39 +494,37 @@
 
         function animate() {
             requestAnimationFrame(animate);
-            controls.update();
+            if (controls) controls.update();
 
-            // Handle Search Highlight Animation (Pulsing Effect)
             searchPulseTime += 0.05;
             const searchInput = document.getElementById('search-input');
-            const query = searchInput.value.trim().toLowerCase();
+            const query = searchInput ? searchInput.value.trim().toLowerCase() : '';
 
             boxMeshMap.forEach((mesh, boxId) => {
                 if (query.length > 0) {
                     if (highlightedBoxIds.has(boxId)) {
-                        // Highlighted Box: Glowing Yellow & Pulsing Opacity/Scale
                         const scaleFactor = 1 + Math.sin(searchPulseTime * 4) * 0.03;
                         mesh.scale.set(scaleFactor, scaleFactor, scaleFactor);
-                        mesh.material.color.setHex(0xfacc15); // Neon Yellow
+                        mesh.material.color.setHex(0xfacc15);
                         mesh.material.opacity = 1.0;
                     } else {
-                        // Non-matching Box: Semi-transparent
                         mesh.scale.set(1, 1, 1);
                         mesh.material.color.setHex(mesh.userData.originalColor);
                         mesh.material.opacity = 0.25;
                     }
                 } else {
-                    // Reset Normal Appearance
                     mesh.scale.set(1, 1, 1);
                     mesh.material.color.setHex(mesh.userData.originalColor);
                     mesh.material.opacity = 1.0;
                 }
             });
 
-            renderer.render(scene, camera);
+            if (renderer && scene && camera) {
+                renderer.render(scene, camera);
+            }
         }
 
-        // --- 5. UI Updates & Interaction Logic ---
+        // --- UI Updates ---
         function updateAll() {
             render3DScene();
             updateUI();
@@ -565,8 +532,8 @@
         }
 
         function updateUI() {
-            // Update Select Dropdown
             const selectPallet = document.getElementById('select-pallet');
+            if (!selectPallet) return;
             selectPallet.innerHTML = '';
 
             if (palletsData.length === 0) {
@@ -582,10 +549,8 @@
                 });
             }
 
-            // Update Pallet Count Badge
             document.getElementById('pallet-count-badge').textContent = `${palletsData.length} พาเลท`;
 
-            // Update Pallet List Cards
             const container = document.getElementById('pallet-list-container');
             container.innerHTML = '';
 
@@ -610,9 +575,7 @@
                                 </div>
                                 <div class="flex items-center gap-2 shrink-0">
                                     <span class="text-[10px] text-slate-400 bg-slate-900 px-1.5 py-0.5 rounded">ชั้น ${layer}</span>
-                                    <button onclick="removeBox('${pallet.id}', '${b.id}')" class="text-rose-400 hover:text-rose-300 transition">
-                                        <i data-lucide="x" class="w-3.5 h-3.5"></i>
-                                    </button>
+                                    <button onclick="removeBox('${pallet.id}', '${b.id}')" class="text-rose-400 hover:text-rose-300 transition">✖</button>
                                 </div>
                             </div>
                         `;
@@ -626,12 +589,8 @@
                             <p class="text-[10px] text-slate-400">${boxCount} ลัง (${layerCount} ชั้น)</p>
                         </div>
                         <div class="flex items-center gap-1">
-                            <button onclick="focusPallet('${pallet.id}')" title="ซูมกล้องไปที่พาเลทนี้" class="p-1 text-slate-400 hover:text-cyan-400 transition">
-                                <i data-lucide="eye" class="w-3.5 h-3.5"></i>
-                            </button>
-                            <button onclick="removePallet('${pallet.id}')" title="ลบพาเลท" class="p-1 text-slate-400 hover:text-rose-400 transition">
-                                <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
-                            </button>
+                            <button onclick="focusPallet('${pallet.id}')" title="ซูมกล้องไปที่พาเลทนี้" class="p-1 text-slate-400 hover:text-cyan-400 transition">👁️</button>
+                            <button onclick="removePallet('${pallet.id}')" title="ลบพาเลท" class="p-1 text-slate-400 hover:text-rose-400 transition">🗑️</button>
                         </div>
                     </div>
                     <div class="flex flex-col gap-1.5 max-h-36 overflow-y-auto custom-scrollbar pr-0.5">
@@ -642,21 +601,15 @@
                 container.appendChild(card);
             });
 
-            lucide.createIcons();
+            renderIcons();
         }
 
-        // --- 6. Event Handlers & User Actions ---
+        // --- Actions ---
         function addPallet() {
             const name = prompt("กรุณาระบุชื่อพาเลท / โซนจัดเก็บ:", `พาเลท ${String.fromCharCode(65 + palletsData.length)}`);
             if (!name) return;
 
-            const newPallet = {
-                id: 'P_' + Date.now(),
-                name: name.trim(),
-                boxes: []
-            };
-
-            palletsData.push(newPallet);
+            palletsData.push({ id: 'P_' + Date.now(), name: name.trim(), boxes: [] });
             saveData();
         }
 
@@ -686,10 +639,7 @@
             const pallet = palletsData.find(p => p.id === palletId);
             if (pallet) {
                 if (!pallet.boxes) pallet.boxes = [];
-                pallet.boxes.push({
-                    id: 'B_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
-                    label: label
-                });
+                pallet.boxes.push({ id: 'B_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4), label: label });
                 inputLabel.value = '';
                 saveData();
             }
@@ -703,11 +653,12 @@
             }
         }
 
-        // Search System
         function handleSearch() {
             const searchInput = document.getElementById('search-input');
             const searchClear = document.getElementById('search-clear');
             const resultsList = document.getElementById('search-results-list');
+            if (!searchInput) return;
+
             const query = searchInput.value.trim().toLowerCase();
 
             highlightedBoxIds.clear();
@@ -727,13 +678,13 @@
                             const layer = Math.floor(idx / 4) + 1;
                             const item = document.createElement('div');
                             item.className = "flex justify-between items-center bg-slate-800/90 hover:bg-slate-700 px-3 py-1.5 rounded-lg border border-slate-600 text-xs cursor-pointer transition";
-                            item.onclick = () => focusBox(box.id, pallet.id);
+                            item.onclick = () => focusPallet(pallet.id);
                             item.innerHTML = `
                                 <div class="truncate mr-2">
                                     <span class="font-medium text-amber-300">${box.label}</span>
                                     <span class="text-[10px] text-slate-400 block">${pallet.name} • ชั้น ${layer}</span>
                                 </div>
-                                <i data-lucide="locate" class="w-3.5 h-3.5 text-cyan-400 shrink-0"></i>
+                                <span class="text-cyan-400">🎯</span>
                             `;
                             resultsList.appendChild(item);
                         }
@@ -748,10 +699,9 @@
                 resultsList.classList.add('hidden');
             }
 
-            lucide.createIcons();
+            renderIcons();
         }
 
-        // Camera Focus Helpers
         function focusPallet(palletId) {
             const pIndex = palletsData.findIndex(p => p.id === palletId);
             if (pIndex === -1) return;
@@ -760,13 +710,10 @@
             const spacingX = 5.5;
             const spacingZ = 5.5;
 
-            const col = pIndex % cols;
-            const row = Math.floor(pIndex / cols);
-            const targetX = (col - 1) * spacingX;
-            const targetZ = row * spacingZ;
+            const targetX = ((pIndex % cols) - 1) * spacingX;
+            const targetZ = Math.floor(pIndex / cols) * spacingZ;
 
-            // Smooth Camera Transition
-            const duration = 1000;
+            const duration = 800;
             const startPos = camera.position.clone();
             const startTarget = controls.target.clone();
 
@@ -778,33 +725,26 @@
             function animateCamera(now) {
                 const elapsed = now - startTime;
                 const progress = Math.min(elapsed / duration, 1);
-                const easeProgress = 0.5 - Math.cos(progress * Math.PI) / 2; // Ease in-out
+                const easeProgress = 0.5 - Math.cos(progress * Math.PI) / 2;
 
                 camera.position.lerpVectors(startPos, endPos, easeProgress);
                 controls.target.lerpVectors(startTarget, endTarget, easeProgress);
                 controls.update();
 
-                if (progress < 1) {
-                    requestAnimationFrame(animateCamera);
-                }
+                if (progress < 1) requestAnimationFrame(animateCamera);
             }
 
             requestAnimationFrame(animateCamera);
         }
 
-        function focusBox(boxId, palletId) {
-            focusPallet(palletId);
-        }
-
-        // Export/Import JSON Functions
         function exportJSON() {
             const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(palletsData, null, 2));
-            const downloadAnchor = document.createElement('a');
-            downloadAnchor.setAttribute("href", dataStr);
-            downloadAnchor.setAttribute("download", `pallet_backup_${new Date().toISOString().slice(0,10)}.json`);
-            document.body.appendChild(downloadAnchor);
-            downloadAnchor.click();
-            downloadAnchor.remove();
+            const a = document.createElement('a');
+            a.setAttribute("href", dataStr);
+            a.setAttribute("download", `pallet_backup_${new Date().toISOString().slice(0,10)}.json`);
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
         }
 
         function importJSON(event) {
@@ -836,16 +776,14 @@
             }
         }
 
-        // --- 7. DOM Event Listeners Setup ---
+        // --- Init DOM ---
         document.addEventListener('DOMContentLoaded', () => {
             init3D();
             initFirebase();
 
-            // Button Event Bindings
             document.getElementById('btn-add-pallet').addEventListener('click', addPallet);
             document.getElementById('btn-add-box').addEventListener('click', addBox);
             
-            // Search Event Bindings
             const searchInput = document.getElementById('search-input');
             const searchClear = document.getElementById('search-clear');
 
@@ -855,12 +793,10 @@
                 handleSearch();
             });
 
-            // Enter Key Shortcut to Add Box
             document.getElementById('input-box-label').addEventListener('keypress', (e) => {
                 if (e.key === 'Enter') addBox();
             });
 
-            // Import / Export / Clear Bindings
             document.getElementById('btn-export').addEventListener('click', exportJSON);
             document.getElementById('btn-import-trigger').addEventListener('click', () => {
                 document.getElementById('file-import').click();
@@ -868,7 +804,7 @@
             document.getElementById('file-import').addEventListener('change', importJSON);
             document.getElementById('btn-clear-all').addEventListener('click', clearAllData);
 
-            lucide.createIcons();
+            renderIcons();
         });
     </script>
 </body>
