@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>3D Pallet & File Box Stacking Manager</title>
+    <title>3D Pallet & File Box Manager (Smooth 60FPS)</title>
     
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -11,9 +11,10 @@
     <!-- Lucide Icons -->
     <script src="https://unpkg.com/lucide@latest"></script>
     
-    <!-- Three.js and OrbitControls -->
+    <!-- Three.js, OrbitControls and GSAP for Smooth Animations -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
 
     <!-- Firebase SDK v9 (Compat) -->
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
@@ -66,17 +67,16 @@
         <div class="flex flex-wrap justify-between items-center gap-4 pointer-events-auto">
             <div class="glass-panel px-5 py-3 rounded-2xl flex items-center gap-3 shadow-2xl">
                 <div class="p-2 bg-indigo-600 rounded-xl">
-                    <i data-lucide="boxes" class="w-6 h-6 text-white">📦</i>
+                    <i data-lucide="boxes" class="w-6 h-6 text-white"></i>
                 </div>
                 <div>
                     <h1 class="font-bold text-lg leading-tight bg-gradient-to-r from-indigo-400 to-cyan-400 bg-clip-text text-transparent">
-                        ระบบจัดเรียงลังแฟ้ม 3D
+                        ระบบจัดเรียงลังแฟ้ม 3D (Smooth Engine)
                     </h1>
-                    <p class="text-xs text-slate-400">4 ลัง/ชั้น ซ้อนได้ไม่จำกัด (2x2 Grid)</p>
+                    <p class="text-xs text-slate-400">ระบบตาราง 2x2 ชั้นไม่จำกัด + ค้นหาและจัดเรียง</p>
                 </div>
             </div>
 
-            <!-- Connection Status & System Actions -->
             <div class="flex items-center gap-3">
                 <div id="status-badge" class="glass-panel px-4 py-2 rounded-xl flex items-center gap-2 text-xs font-semibold shadow-lg">
                     <span class="w-2.5 h-2.5 rounded-full bg-amber-500 animate-ping"></span>
@@ -85,14 +85,14 @@
 
                 <div class="glass-panel p-1.5 rounded-xl flex items-center gap-1 shadow-lg">
                     <button id="btn-export" title="ส่งออก JSON" class="p-2 hover:bg-slate-700/60 rounded-lg text-slate-300 hover:text-white transition">
-                        <i data-lucide="download" class="w-4 h-4">📥</i>
+                        <i data-lucide="download" class="w-4 h-4"></i>
                     </button>
                     <button id="btn-import-trigger" title="นำเข้า JSON" class="p-2 hover:bg-slate-700/60 rounded-lg text-slate-300 hover:text-white transition">
-                        <i data-lucide="upload" class="w-4 h-4">📤</i>
+                        <i data-lucide="upload" class="w-4 h-4"></i>
                     </button>
                     <input type="file" id="file-import" accept=".json" class="hidden">
                     <button id="btn-clear-all" title="ล้างข้อมูลทั้งหมด" class="p-2 hover:bg-rose-900/40 text-rose-400 hover:text-rose-300 rounded-lg transition">
-                        <i data-lucide="trash-2" class="w-4 h-4">🗑️</i>
+                        <i data-lucide="trash-2" class="w-4 h-4"></i>
                     </button>
                 </div>
             </div>
@@ -107,13 +107,13 @@
                 <!-- Search Box -->
                 <div class="flex flex-col gap-2 border-b border-slate-700/60 pb-4">
                     <label class="text-xs font-semibold text-cyan-400 flex items-center gap-1.5">
-                        <i data-lucide="search" class="w-3.5 h-3.5">🔍</i> ค้นหาชื่อข้างกล่อง
+                        <i data-lucide="search" class="w-3.5 h-3.5"></i> ค้นหาชื่อข้างกล่อง
                     </label>
                     <div class="relative">
                         <input type="text" id="search-input" placeholder="พิมพ์ชื่อกล่องเพื่อไฮไลต์ 3D..." 
                             class="w-full bg-slate-900/80 border border-slate-700 rounded-xl px-3.5 py-2 text-sm text-white focus:outline-none focus:border-cyan-500 pr-8 transition">
                         <button id="search-clear" class="absolute right-2.5 top-2.5 text-slate-400 hover:text-white hidden">
-                            <i data-lucide="x" class="w-4 h-4">✖</i>
+                            <i data-lucide="x" class="w-4 h-4"></i>
                         </button>
                     </div>
                     <div id="search-results-list" class="flex flex-col gap-1.5 mt-1 max-h-32 overflow-y-auto custom-scrollbar hidden"></div>
@@ -122,7 +122,7 @@
                 <!-- Add Box Form -->
                 <div class="flex flex-col gap-3">
                     <h2 class="text-sm font-semibold text-slate-200 flex items-center gap-2">
-                        <i data-lucide="box" class="w-4 h-4 text-indigo-400">📦</i> เพิ่มลังแฟ้มลงพาเลท
+                        <i data-lucide="box" class="w-4 h-4 text-indigo-400"></i> เพิ่มลังแฟ้มลงพาเลท
                     </h2>
                     
                     <div class="flex flex-col gap-1.5">
@@ -139,19 +139,18 @@
 
                     <div class="grid grid-cols-2 gap-2 pt-1">
                         <button id="btn-add-box" class="bg-indigo-600 hover:bg-indigo-500 active:scale-95 text-white text-sm font-medium py-2.5 px-4 rounded-xl flex items-center justify-center gap-2 transition shadow-lg shadow-indigo-600/30">
-                            <i data-lucide="plus" class="w-4 h-4">➕</i> เพิ่มกล่อง
+                            <i data-lucide="plus" class="w-4 h-4"></i> เพิ่มกล่อง
                         </button>
                         <button id="btn-add-pallet" class="bg-slate-800 hover:bg-slate-700 text-slate-200 text-sm font-medium py-2.5 px-4 rounded-xl border border-slate-700 flex items-center justify-center gap-2 transition">
-                            <i data-lucide="layer-plus" class="w-4 h-4 text-cyan-400">🧱</i> เพิ่มพาเลท
+                            <i data-lucide="layer-plus" class="w-4 h-4 text-cyan-400"></i> เพิ่มพาเลท
                         </button>
                     </div>
                 </div>
 
-                <!-- Instructions -->
                 <div class="text-[11px] text-slate-400 bg-slate-900/40 p-3 rounded-xl border border-slate-800/80 flex flex-col gap-1">
-                    <div class="font-medium text-slate-300">💡 การจัดวางกล่อง:</div>
-                    <div>• แต่ละพาเลทจะเรียงเป็นตาราง 2x2 (4 ลังต่อชั้น)</div>
-                    <div>• กล่องใบที่ 5 ขึ้นไปจะถูกวางซ้อนทับขึ้นชั้นถัดไปอัตโนมัติ</div>
+                    <div class="font-medium text-slate-300">💡 เคล็ดลับการใช้งาน:</div>
+                    <div>• คลิกที่กล่องบนจอ 3D เพื่อซูมและดูข้อมูล</div>
+                    <div>• สามารถกดปุ่มจัดเรียง/สลับตำแหน่งกล่องในการ์ดด้านขวาได้</div>
                 </div>
 
             </div>
@@ -160,7 +159,7 @@
             <div class="md:col-span-7 lg:col-span-8 glass-panel p-5 rounded-2xl shadow-2xl max-h-[40vh] md:max-h-[80vh] overflow-y-auto custom-scrollbar flex flex-col gap-3">
                 <div class="flex justify-between items-center border-b border-slate-700/60 pb-2">
                     <h2 class="text-sm font-semibold text-slate-200 flex items-center gap-2">
-                        <i data-lucide="list" class="w-4 h-4 text-cyan-400">📋</i> สรุปรายการพาเลทและลังแฟ้ม
+                        <i data-lucide="list" class="w-4 h-4 text-cyan-400"></i> สรุปรายการพาเลทและลังแฟ้ม
                     </h2>
                     <span id="pallet-count-badge" class="text-xs bg-indigo-950 text-indigo-300 border border-indigo-800 px-2.5 py-0.5 rounded-full font-medium">
                         0 พาเลท
@@ -176,14 +175,12 @@
 
     <!-- Application Script Logic -->
     <script>
-        // --- Safe Icon Render Helper ---
         function renderIcons() {
             if (typeof lucide !== 'undefined' && lucide.createIcons) {
                 lucide.createIcons();
             }
         }
 
-        // --- Firebase Configuration ---
         const firebaseConfig = {
             apiKey: "AIzaSyBX_HkxQttRGlZ81UaE3fsWtJLQb9MBQqw",
             authDomain: "gen-lang-client-0163925046.firebaseapp.com",
@@ -194,15 +191,13 @@
             measurementId: "G-EQDGSMGTFJ"
         };
 
-        // Global State & System Variables
         let db = null;
         let isFirebaseLive = false;
         let palletsData = [];
         let highlightedBoxIds = new Set();
         let searchPulseTime = 0;
 
-        // 3D Engine Variables
-        let scene, camera, renderer, controls;
+        let scene, camera, renderer, controls, raycaster, mouse;
         let pallet3DGroup = new THREE.Group();
         let boxMeshMap = new Map();
 
@@ -210,7 +205,6 @@
             0x3b82f6, 0x10b981, 0xf59e0b, 0x8b5cf6, 0xec4899, 0x06b6d4
         ];
 
-        // --- Initialize Firebase Connection ---
         function initFirebase() {
             const statusBadge = document.getElementById('status-badge');
             try {
@@ -233,14 +227,12 @@
                           }
                           updateAll();
                       }, (err) => {
-                          console.warn("Firestore listener fallback to local:", err);
                           enableLocalStorageFallback();
                       });
                 } else {
                     enableLocalStorageFallback();
                 }
             } catch (error) {
-                console.warn("Firebase Init failed, using Local Storage:", error);
                 enableLocalStorageFallback();
             }
         }
@@ -270,7 +262,6 @@
                     pallets: palletsData,
                     updatedAt: firebase.firestore.FieldValue.serverTimestamp()
                 }).catch(err => {
-                    console.error("Save to Cloud Failed:", err);
                     saveToLocalStorage();
                 });
             } else {
@@ -297,7 +288,6 @@
             updateAll();
         }
 
-        // --- Three.js 3D Scene Setup ---
         function init3D() {
             const container = document.getElementById('canvas-container');
             
@@ -322,6 +312,9 @@
             controls.minDistance = 5;
             controls.maxDistance = 60;
 
+            raycaster = new THREE.Raycaster();
+            mouse = new THREE.Vector2();
+
             const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
             scene.add(ambientLight);
 
@@ -341,6 +334,7 @@
             scene.add(pallet3DGroup);
 
             window.addEventListener('resize', onWindowResize);
+            window.addEventListener('click', onCanvasClick);
             animate();
         }
 
@@ -350,7 +344,25 @@
             renderer.setSize(window.innerWidth, window.innerHeight);
         }
 
-        // --- Render 3D Objects ---
+        function onCanvasClick(event) {
+            if (event.target.tagName !== 'CANVAS') return;
+            mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+            mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+
+            raycaster.setFromCamera(mouse, camera);
+            const intersects = raycaster.intersectObjects(pallet3DGroup.children, true);
+
+            if (intersects.length > 0) {
+                let obj = intersects[0].object;
+                while (obj && !obj.userData.boxId && obj.parent && obj !== pallet3DGroup) {
+                    obj = obj.parent;
+                }
+                if (obj && obj.userData.boxId) {
+                    focusBox(obj.userData.boxId, obj.userData.palletId);
+                }
+            }
+        }
+
         function render3DScene() {
             while(pallet3DGroup.children.length > 0) { 
                 const obj = pallet3DGroup.children[0];
@@ -361,7 +373,6 @@
             const palletWidth = 3.6;
             const palletLength = 3.6;
             const palletHeight = 0.4;
-
             const boxWidth = 1.6;
             const boxLength = 1.6;
             const boxHeight = 1.2;
@@ -524,7 +535,6 @@
             }
         }
 
-        // --- UI Updates ---
         function updateAll() {
             render3DScene();
             updateUI();
@@ -573,9 +583,10 @@
                                     <span class="w-2 h-2 rounded-full" style="background-color: #${LAYER_COLORS[(layer-1)%LAYER_COLORS.length].toString(16)}"></span>
                                     <span class="text-slate-200 truncate" title="${b.label}">${b.label}</span>
                                 </div>
-                                <div class="flex items-center gap-2 shrink-0">
+                                <div class="flex items-center gap-1.5 shrink-0">
                                     <span class="text-[10px] text-slate-400 bg-slate-900 px-1.5 py-0.5 rounded">ชั้น ${layer}</span>
-                                    <button onclick="removeBox('${pallet.id}', '${b.id}')" class="text-rose-400 hover:text-rose-300 transition">✖</button>
+                                    <button onclick="moveBoxPrompt('${pallet.id}', '${b.id}')" title="ย้ายกล่อง" class="text-cyan-400 hover:text-cyan-300 transition">🔄</button>
+                                    <button onclick="removeBox('${pallet.id}', '${b.id}')" title="ลบกล่อง" class="text-rose-400 hover:text-rose-300 transition">✖</button>
                                 </div>
                             </div>
                         `;
@@ -604,7 +615,6 @@
             renderIcons();
         }
 
-        // --- Actions ---
         function addPallet() {
             const name = prompt("กรุณาระบุชื่อพาเลท / โซนจัดเก็บ:", `พาเลท ${String.fromCharCode(65 + palletsData.length)}`);
             if (!name) return;
@@ -653,6 +663,35 @@
             }
         }
 
+        function moveBoxPrompt(fromPalletId, boxId) {
+            const targetPalletId = prompt("ย้ายไปพาเลทใด? (กรอก ID หรือเลือกจากรายการพาเลท):\n" + palletsData.map(p => `${p.id} = ${p.name}`).join("\n"));
+            if (!targetPalletId) return;
+
+            const targetPallet = palletsData.find(p => p.id === targetPalletId || p.name.includes(targetPalletId));
+            if (!targetPallet) {
+                alert("ไม่พบพาเลทปลายทางที่ระบุ");
+                return;
+            }
+
+            let boxObj = null;
+            const fromPallet = palletsData.find(p => p.id === fromPalletId);
+            if (fromPallet && fromPallet.boxes) {
+                fromPallet.boxes = fromPallet.boxes.filter(b => {
+                    if (b.id === boxId) {
+                        boxObj = b;
+                        return false;
+                    }
+                    return true;
+                });
+            }
+
+            if (boxObj) {
+                if (!targetPallet.boxes) targetPallet.boxes = [];
+                targetPallet.boxes.push(boxObj);
+                saveData();
+            }
+        }
+
         function handleSearch() {
             const searchInput = document.getElementById('search-input');
             const searchClear = document.getElementById('search-clear');
@@ -678,7 +717,7 @@
                             const layer = Math.floor(idx / 4) + 1;
                             const item = document.createElement('div');
                             item.className = "flex justify-between items-center bg-slate-800/90 hover:bg-slate-700 px-3 py-1.5 rounded-lg border border-slate-600 text-xs cursor-pointer transition";
-                            item.onclick = () => focusPallet(pallet.id);
+                            item.onclick = () => focusBox(box.id, pallet.id);
                             item.innerHTML = `
                                 <div class="truncate mr-2">
                                     <span class="font-medium text-amber-300">${box.label}</span>
@@ -713,28 +752,29 @@
             const targetX = ((pIndex % cols) - 1) * spacingX;
             const targetZ = Math.floor(pIndex / cols) * spacingZ;
 
-            const duration = 800;
-            const startPos = camera.position.clone();
-            const startTarget = controls.target.clone();
+            gsap.to(camera.position, {
+                x: targetX,
+                y: 8,
+                z: targetZ + 12,
+                duration: 1,
+                ease: "power2.inOut"
+            });
 
-            const endTarget = new THREE.Vector3(targetX, 1.5, targetZ);
-            const endPos = new THREE.Vector3(targetX, 8, targetZ + 12);
+            gsap.to(controls.target, {
+                x: targetX,
+                y: 1.5,
+                z: targetZ,
+                duration: 1,
+                ease: "power2.inOut"
+            });
+        }
 
-            const startTime = performance.now();
-
-            function animateCamera(now) {
-                const elapsed = now - startTime;
-                const progress = Math.min(elapsed / duration, 1);
-                const easeProgress = 0.5 - Math.cos(progress * Math.PI) / 2;
-
-                camera.position.lerpVectors(startPos, endPos, easeProgress);
-                controls.target.lerpVectors(startTarget, endTarget, easeProgress);
-                controls.update();
-
-                if (progress < 1) requestAnimationFrame(animateCamera);
+        function focusBox(boxId, palletId) {
+            focusPallet(palletId);
+            const mesh = boxMeshMap.get(boxId);
+            if (mesh) {
+                gsap.to(mesh.scale, { x: 1.25, y: 1.25, z: 1.25, yoyo: true, repeat: 1, duration: 0.3 });
             }
-
-            requestAnimationFrame(animateCamera);
         }
 
         function exportJSON() {
@@ -776,7 +816,6 @@
             }
         }
 
-        // --- Init DOM ---
         document.addEventListener('DOMContentLoaded', () => {
             init3D();
             initFirebase();
