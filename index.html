@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>3D Pallet Studio - Inventory Summary</title>
+    <title>3D Pallet Studio Cloud Edition</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Font Awesome Icons -->
@@ -113,7 +113,7 @@
         </div>
     </header>
 
-    <!-- Top Inventory Dashboard Bar -->
+    <!-- Top Inventory Dashboard Bar (สรุปสต็อกสินค้า) -->
     <div class="bg-slate-900/90 border-b border-slate-800 px-3 py-1.5 grid grid-cols-3 gap-2 shrink-0 z-20 text-center font-mono">
         <div class="bg-slate-950/80 border border-slate-800 rounded-lg p-1">
             <div class="text-[9px] text-slate-400 font-sans">สินค้าทั้งหมด</div>
@@ -219,7 +219,7 @@
     </nav>
 
     <script>
-        class FinalInventoryPalletApp {
+        class FinalCloudPalletApp {
             constructor() {
                 this.pallets = [];
                 this.selectedPalletId = null;
@@ -576,7 +576,7 @@
                                 </div>
                             </div>
                             
-                            <!-- Breakdown สินค้าในพาเลทนี้ -->
+                            <!-- Breakdown รายการสินค้าย่อยในพาเลทนี้ -->
                             <div class="bg-slate-900 border border-slate-800/80 rounded-lg p-2 space-y-1">
                                 <div class="flex justify-between items-center text-[10px] font-bold text-slate-300 border-b border-slate-800 pb-1">
                                     <span><i class="fa-solid fa-box text-sky-400"></i> รายการสินค้าในพาเลท</span>
@@ -623,7 +623,7 @@
         }
 
         let app = null;
-        window.addEventListener('load', () => { app = new FinalInventoryPalletApp(); });
+        window.addEventListener('load', () => { app = new FinalCloudPalletApp(); });
     </script>
 </body>
 </html>
