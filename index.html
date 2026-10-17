@@ -20,18 +20,17 @@
         import { getFirestore, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
         // ========================================================
-        // 🔑 ใส่ค่า Firebase ของคุณตรงนี้
+        // 🔑 Firebase Config (ใส่ให้เรียบร้อยแล้ว)
         // ========================================================
-        // For Firebase JS SDK v7.20.0 and later, measurementId is optional
-const firebaseConfig = {
-  apiKey: "AIzaSyBX_HkxQttRGlZ81UaE3fsWtJLQb9MBQqw",
-  authDomain: "gen-lang-client-0163925046.firebaseapp.com",
-  projectId: "gen-lang-client-0163925046",
-  storageBucket: "gen-lang-client-0163925046.firebasestorage.app",
-  messagingSenderId: "965044714461",
-  appId: "1:965044714461:web:ae3b0baf227e4b03975434",
-  measurementId: "G-EQDGSMGTFJ"
-};
+        const firebaseConfig = {
+            apiKey: "AIzaSyBX_HkxQttRGlZ81UaE3fsWtJLQb9MBQqw",
+            authDomain: "gen-lang-client-0163925046.firebaseapp.com",
+            projectId: "gen-lang-client-0163925046",
+            storageBucket: "gen-lang-client-0163925046.firebasestorage.app",
+            messagingSenderId: "965044714461",
+            appId: "1:965044714461:web:ae3b0baf227e4b03975434",
+            measurementId: "G-EQDGSMGTFJ"
+        };
         // ========================================================
 
         let db = null;
@@ -115,8 +114,24 @@ const firebaseConfig = {
         </div>
     </header>
 
+    <!-- Top Inventory Dashboard Bar (สรุปสต็อกสินค้า) -->
+    <div class="bg-slate-900/90 border-b border-slate-800 px-3 py-1.5 grid grid-cols-3 gap-2 shrink-0 z-20 text-center font-mono">
+        <div class="bg-slate-950/80 border border-slate-800 rounded-lg p-1">
+            <div class="text-[9px] text-slate-400 font-sans">สินค้าทั้งหมด</div>
+            <div class="text-xs font-bold text-sky-400" id="stat-total-boxes">0 ลัง</div>
+        </div>
+        <div class="bg-slate-950/80 border border-slate-800 rounded-lg p-1">
+            <div class="text-[9px] text-slate-400 font-sans">จำนวนพาเลท</div>
+            <div class="text-xs font-bold text-emerald-400" id="stat-total-pallets">0 พาเลท</div>
+        </div>
+        <div class="bg-slate-950/80 border border-slate-800 rounded-lg p-1">
+            <div class="text-[9px] text-slate-400 font-sans">เฉลี่ย/พาเลท</div>
+            <div class="text-xs font-bold text-amber-400" id="stat-avg-boxes">0 ลัง</div>
+        </div>
+    </div>
+
     <!-- Main Body Area -->
-    <div class="flex-1 flex flex-col relative overflow-hidden" style="height: calc(100vh - 104px);">
+    <div class="flex-1 flex flex-col relative overflow-hidden" style="height: calc(100vh - 142px);">
 
         <!-- 3D Viewport -->
         <main id="view-3d" class="w-full h-full relative bg-slate-950">
@@ -229,7 +244,7 @@ const firebaseConfig = {
             init3D() {
                 const container = document.getElementById('canvas-container');
                 const width = container.clientWidth || window.innerWidth;
-                const height = container.clientHeight || (window.innerHeight - 104);
+                const height = container.clientHeight || (window.innerHeight - 142);
 
                 this.scene = new THREE.Scene();
                 this.scene.background = new THREE.Color(0x020617);
@@ -265,7 +280,7 @@ const firebaseConfig = {
 
                 window.addEventListener('resize', () => {
                     const w = container.clientWidth || window.innerWidth;
-                    const h = container.clientHeight || (window.innerHeight - 104);
+                    const h = container.clientHeight || (window.innerHeight - 142);
                     this.camera.aspect = w / h;
                     this.camera.updateProjectionMatrix();
                     this.renderer.setSize(w, h);
@@ -473,10 +488,19 @@ const firebaseConfig = {
                 this.updateInspectorUI(pallet);
             }
 
+            updateDashboardStats(totalBoxes, totalPallets) {
+                document.getElementById('stat-total-boxes').textContent = `${totalBoxes} ลัง`;
+                document.getElementById('stat-total-pallets').textContent = `${totalPallets} พาเลท`;
+                const avg = totalPallets > 0 ? (totalBoxes / totalPallets).toFixed(1) : 0;
+                document.getElementById('stat-avg-boxes').textContent = `${avg} ลัง`;
+            }
+
             recalculateAll(shouldSave = true) {
                 this.boxMeshes.forEach(m => this.scene.remove(m));
                 this.palletMeshes.forEach(m => this.scene.remove(m));
                 this.boxMeshes = []; this.palletMeshes = [];
+
+                let grandTotalBoxes = 0;
 
                 this.pallets.forEach(pallet => {
                     // Pallet Base
@@ -526,28 +550,54 @@ const firebaseConfig = {
                             this.boxMeshes.push(mesh);
 
                             slotHeights[slotIdx] += item.h;
+                            grandTotalBoxes++;
                         }
                     });
                 });
 
+                this.updateDashboardStats(grandTotalBoxes, this.pallets.length);
                 this.renderPalletListUI();
                 if (shouldSave) this.saveData();
             }
 
             renderPalletListUI() {
                 const container = document.getElementById('pallet-list-container');
-                container.innerHTML = this.pallets.map(p => `
-                    <div class="bg-slate-950 border ${this.selectedPalletId === p.id ? 'border-sky-500' : 'border-slate-800'} rounded-xl p-2.5 flex justify-between items-center text-xs">
-                        <div>
-                            <input type="text" value="${p.name}" onchange="app.renamePallet('${p.id}', this.value)" class="bg-transparent border-b border-slate-700 font-bold text-white outline-none focus:border-sky-500">
-                            <div class="text-[10px] text-slate-400 font-mono mt-0.5">ขนาด: ${p.length}x${p.width}x${p.height} mm</div>
+                container.innerHTML = this.pallets.map(p => {
+                    const palletBoxesCount = p.boxes.reduce((acc, b) => acc + (b.qty || 0), 0);
+                    return `
+                        <div class="bg-slate-950 border ${this.selectedPalletId === p.id ? 'border-sky-500' : 'border-slate-800'} rounded-xl p-2.5 space-y-2 text-xs">
+                            <div class="flex justify-between items-center">
+                                <div>
+                                    <input type="text" value="${p.name}" onchange="app.renamePallet('${p.id}', this.value)" class="bg-transparent border-b border-slate-700 font-bold text-white outline-none focus:border-sky-500">
+                                    <div class="text-[10px] text-slate-400 font-mono mt-0.5">ขนาด: ${p.length}x${p.width}x${p.height} mm</div>
+                                </div>
+                                <div class="flex items-center gap-1">
+                                    <button onclick="app.selectAndInspectPallet('${p.id}')" class="bg-sky-600 text-white px-2.5 py-1 rounded-lg text-[11px]">จัดการ</button>
+                                    <button onclick="app.deletePallet('${p.id}')" class="text-slate-500 hover:text-rose-400 p-1"><i class="fa-solid fa-trash-can"></i></button>
+                                </div>
+                            </div>
+                            
+                            <!-- Breakdown รายการสินค้าย่อยในพาเลทนี้ -->
+                            <div class="bg-slate-900 border border-slate-800/80 rounded-lg p-2 space-y-1">
+                                <div class="flex justify-between items-center text-[10px] font-bold text-slate-300 border-b border-slate-800 pb-1">
+                                    <span><i class="fa-solid fa-box text-sky-400"></i> รายการสินค้าในพาเลท</span>
+                                    <span class="text-sky-400 font-mono">${palletBoxesCount} ลัง</span>
+                                </div>
+                                <div class="space-y-1">
+                                    ${p.boxes.length > 0 ? p.boxes.map(b => `
+                                        <div class="flex justify-between items-center text-[10px] text-slate-400 font-mono">
+                                            <div class="flex items-center gap-1.5 truncate">
+                                                <span class="w-2 h-2 rounded-full inline-block shrink-0" style="background-color: ${b.color}"></span>
+                                                <span class="truncate text-slate-300">${b.name}</span>
+                                            </div>
+                                            <span class="font-bold text-sky-300 ml-2">${b.qty} ใบ</span>
+                                        </div>
+                                    `).join('') : '<div class="text-[10px] text-slate-500 text-center py-0.5">ไม่มีกล่องในพาเลทนี้</div>'}
+                                </div>
+                            </div>
                         </div>
-                        <div class="flex items-center gap-1">
-                            <button onclick="app.selectAndInspectPallet('${p.id}')" class="bg-sky-600 text-white px-2.5 py-1 rounded-lg text-[11px]">จัดการ</button>
-                            <button onclick="app.deletePallet('${p.id}')" class="text-slate-500 hover:text-rose-400 p-1"><i class="fa-solid fa-trash-can"></i></button>
-                        </div>
-                    </div>
-                `).join('');
+                    `;
+                }).join('');
             }
 
             renamePallet(palletId, newName) {
