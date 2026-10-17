@@ -3,185 +3,272 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>3D Pallet & File Box Manager (Smooth 60FPS)</title>
+    <title>ระบบบริหารจัดการพาเลทและลังเอกสาร 3 มิติ (3D Pallet & Box Stacker)</title>
     
-    <!-- Tailwind CSS CDN -->
+    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     
-    <!-- Lucide Icons -->
-    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
-    <!-- Three.js, OrbitControls and GSAP for Smooth Animations -->
+    <!-- Google Font (Kanit) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- Three.js and OrbitControls -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    
+    <!-- GSAP for Smooth 60FPS Animations -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
 
-    <!-- Firebase SDK v9 (Compat) -->
-    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
-
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&display=swap');
         body {
-            font-family: 'Prompt', sans-serif;
-            margin: 0;
-            padding: 0;
-            overflow: hidden;
+            font-family: 'Kanit', sans-serif;
             background-color: #0f172a;
             color: #f8fafc;
+            overflow: hidden;
         }
-        #canvas-container {
-            width: 100vw;
-            height: 100vh;
-            position: absolute;
-            top: 0;
-            left: 0;
-            z-index: 1;
+        
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
         }
+        ::-webkit-scrollbar-track {
+            background: #1e293b;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #475569;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #64748b;
+        }
+
         .glass-panel {
-            background: rgba(15, 23, 42, 0.85);
-            backdrop-filter: blur(16px);
+            background: rgba(30, 41, 59, 0.85);
+            backdrop-filter: blur(12px);
             border: 1px solid rgba(255, 255, 255, 0.1);
         }
-        .custom-scrollbar::-webkit-scrollbar {
-            width: 6px;
-        }
-        .custom-scrollbar::-webkit-scrollbar-track {
-            background: rgba(15, 23, 42, 0.6);
-        }
-        .custom-scrollbar::-webkit-scrollbar-thumb {
-            background: rgba(51, 65, 85, 0.8);
-            border-radius: 3px;
+
+        .dragging-indicator {
+            pointer-events: none;
+            transition: transform 0.1s ease;
         }
     </style>
 </head>
-<body class="relative min-h-screen">
+<body class="h-screen w-screen flex flex-col md:flex-row select-none">
 
-    <!-- 3D Canvas Container -->
-    <div id="canvas-container"></div>
-
-    <!-- UI Overlay Layer -->
-    <div class="relative z-10 p-4 md:p-6 pointer-events-none flex flex-col justify-between h-screen max-w-full">
+    <!-- Canvas Container (3D Scene) -->
+    <div id="canvas-container" class="relative flex-1 h-full w-full bg-slate-950 overflow-hidden cursor-grab active:cursor-grabbing">
         
-        <!-- Header & Status Bar -->
-        <div class="flex flex-wrap justify-between items-center gap-4 pointer-events-auto">
-            <div class="glass-panel px-5 py-3 rounded-2xl flex items-center gap-3 shadow-2xl">
-                <div class="p-2 bg-indigo-600 rounded-xl">
-                    <i data-lucide="boxes" class="w-6 h-6 text-white"></i>
-                </div>
-                <div>
-                    <h1 class="font-bold text-lg leading-tight bg-gradient-to-r from-indigo-400 to-cyan-400 bg-clip-text text-transparent">
-                        ระบบจัดเรียงลังแฟ้ม 3D (Smooth Engine)
-                    </h1>
-                    <p class="text-xs text-slate-400">ระบบตาราง 2x2 ชั้นไม่จำกัด + ค้นหาและจัดการกล่อง</p>
-                </div>
+        <!-- Status & Search Bar (Top Floating Bar) -->
+        <div class="absolute top-4 left-4 right-4 md:right-auto z-10 flex flex-wrap gap-3 items-center">
+            
+            <!-- System Mode Indicator -->
+            <div id="connection-status" class="glass-panel px-3 py-1.5 rounded-xl flex items-center gap-2 text-xs font-semibold shadow-lg">
+                <span class="w-2.5 h-2.5 rounded-full bg-amber-500 animate-pulse" id="status-dot"></span>
+                <span id="status-text" class="text-amber-400">กำลังตรวจสอบสถานะ...</span>
             </div>
 
-            <div class="flex items-center gap-3">
-                <div id="status-badge" class="glass-panel px-4 py-2 rounded-xl flex items-center gap-2 text-xs font-semibold shadow-lg">
-                    <span class="w-2.5 h-2.5 rounded-full bg-amber-500 animate-ping"></span>
-                    <span class="text-amber-400">กำลังเชื่อมต่อ...</span>
-                </div>
+            <!-- Drag Hint Badge -->
+            <div class="glass-panel px-3 py-1.5 rounded-xl hidden sm:flex items-center gap-2 text-xs text-indigo-300 font-medium border border-indigo-500/30">
+                <i class="fa-solid fa-hand-pointer text-indigo-400 animate-bounce"></i>
+                <span>คลิกลากลัง 3D เพื่อย้ายพาเลทได้เลย</span>
+            </div>
 
-                <div class="glass-panel p-1.5 rounded-xl flex items-center gap-1 shadow-lg">
-                    <button id="btn-export" title="ส่งออก JSON" class="p-2 hover:bg-slate-700/60 rounded-lg text-slate-300 hover:text-white transition">
-                        <i data-lucide="download" class="w-4 h-4"></i>
-                    </button>
-                    <button id="btn-import-trigger" title="นำเข้า JSON" class="p-2 hover:bg-slate-700/60 rounded-lg text-slate-300 hover:text-white transition">
-                        <i data-lucide="upload" class="w-4 h-4"></i>
-                    </button>
-                    <input type="file" id="file-import" accept=".json" class="hidden">
-                    <button id="btn-clear-all" title="ล้างข้อมูลทั้งหมด" class="p-2 hover:bg-rose-900/40 text-rose-400 hover:text-rose-300 rounded-lg transition">
-                        <i data-lucide="trash-2" class="w-4 h-4"></i>
-                    </button>
-                </div>
+            <!-- Search Input -->
+            <div class="relative flex-1 sm:w-72">
+                <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm"></i>
+                <input type="text" id="search-box" placeholder="ค้นหาชื่อลัง / รหัสเอกสาร..." 
+                       class="w-full bg-slate-900/90 text-sm text-slate-100 pl-9 pr-8 py-2 rounded-xl border border-slate-700/60 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all shadow-lg placeholder:text-slate-500">
+                <button id="clear-search" class="hidden absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white">
+                    <i class="fa-solid fa-xmark text-xs"></i>
+                </button>
+            </div>
+            
+            <!-- Quick View Preset Buttons -->
+            <div class="glass-panel p-1 rounded-xl flex gap-1 shadow-lg">
+                <button onclick="setCameraView('3d')" title="มุมมอง 3 มิติอิสระ" class="px-2.5 py-1 text-xs font-medium rounded-lg hover:bg-slate-700 text-slate-300 hover:text-white transition-all">
+                    <i class="fa-solid fa-cube mr-1"></i> 3D
+                </button>
+                <button onclick="setCameraView('top')" title="มุมมองจากด้านบน" class="px-2.5 py-1 text-xs font-medium rounded-lg hover:bg-slate-700 text-slate-300 hover:text-white transition-all">
+                    <i class="fa-solid fa-arrows-up-down-left-right mr-1"></i> Top
+                </button>
+                <button onclick="setCameraView('front')" title="มุมมองด้านหน้า" class="px-2.5 py-1 text-xs font-medium rounded-lg hover:bg-slate-700 text-slate-300 hover:text-white transition-all">
+                    <i class="fa-solid fa-vector-square mr-1"></i> Front
+                </button>
             </div>
         </div>
 
-        <!-- Sidebar / Bottom Controls -->
-        <div class="grid grid-cols-1 md:grid-cols-12 gap-4 pointer-events-auto items-end pb-2">
+        <!-- Floating Dragging Info Banner -->
+        <div id="drag-info-banner" class="hidden absolute bottom-16 left-1/2 -translate-x-1/2 z-20 glass-panel px-4 py-2 rounded-2xl border border-yellow-500/50 shadow-2xl items-center gap-3">
+            <span class="w-3 h-3 rounded-full bg-yellow-400 animate-ping"></span>
+            <span class="text-xs font-semibold text-yellow-300">กำลังลาก: <span id="drag-box-name" class="text-white">...</span></span>
+            <span class="text-[11px] text-slate-400">(ปล่อยเมาส์บนพาเลทเป้าหมายเพื่อวาง)</span>
+        </div>
+
+        <!-- Search Results Floating Panel -->
+        <div id="search-results-panel" class="hidden absolute top-20 left-4 z-20 w-80 max-h-80 glass-panel rounded-2xl p-3 flex-col gap-2 overflow-y-auto shadow-2xl border border-yellow-500/30">
+            <div class="flex justify-between items-center px-1 border-b border-slate-700/50 pb-2">
+                <span class="text-xs font-semibold text-yellow-400 flex items-center gap-1.5">
+                    <i class="fa-solid fa-list-check"></i> ผลการค้นหา (<span id="search-count">0</span>)
+                </span>
+                <span class="text-[10px] text-slate-400">คลิกที่รายการเพื่อเลื่อนกล้องโฟกัส</span>
+            </div>
+            <div id="search-results-list" class="flex flex-col gap-1.5"></div>
+        </div>
+
+        <!-- Bottom Controls Floating Bar -->
+        <div class="absolute bottom-4 left-4 right-4 md:right-auto z-10 flex gap-2">
+            <button id="btn-add-box" class="bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2.5 rounded-xl font-medium text-sm shadow-lg shadow-indigo-600/30 flex items-center gap-2 transition-all active:scale-95">
+                <i class="fa-solid fa-plus-circle"></i> เพิ่มลังใหม่
+            </button>
+            <button id="btn-add-pallet" class="bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 px-4 py-2.5 rounded-xl font-medium text-sm shadow-lg flex items-center gap-2 transition-all active:scale-95">
+                <i class="fa-solid fa-boxes-packing"></i> เพิ่มพาเลทใหม่
+            </button>
+        </div>
+    </div>
+
+    <!-- Right Sidebar (Control & Dashboard) -->
+    <div class="w-full md:w-96 h-2/5 md:h-full glass-panel flex flex-col border-t md:border-t-0 md:border-l border-slate-800 z-20">
+        
+        <!-- Header -->
+        <div class="p-4 border-b border-slate-800 flex justify-between items-center bg-slate-900/50">
+            <div>
+                <h1 class="font-bold text-lg text-slate-100 flex items-center gap-2">
+                    <i class="fa-solid fa-cubes text-indigo-400"></i> คลังลังเอกสาร 3D
+                </h1>
+                <p class="text-xs text-slate-400">ลากวางเพื่อย้ายลัง • 4 ลัง/ชั้น ซ้อนได้ไม่จำกัด</p>
+            </div>
+            <div class="flex gap-1">
+                <button id="btn-export" title="ส่งออก JSON" class="p-2 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 transition-all">
+                    <i class="fa-solid fa-download text-sm"></i>
+                </button>
+                <button id="btn-import-trigger" title="นำเข้า JSON" class="p-2 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 transition-all">
+                    <i class="fa-solid fa-upload text-sm"></i>
+                </button>
+                <input type="file" id="file-import" accept=".json" class="hidden">
+            </div>
+        </div>
+
+        <!-- Dashboard Stats -->
+        <div class="grid grid-cols-3 gap-2 p-4 bg-slate-900/30 border-b border-slate-800/60">
+            <div class="bg-slate-800/60 p-2.5 rounded-xl border border-slate-700/40 text-center">
+                <span class="block text-[11px] text-slate-400 font-medium">พาเลททั้งหมด</span>
+                <span id="stat-pallets" class="text-lg font-bold text-indigo-400">0</span>
+            </div>
+            <div class="bg-slate-800/60 p-2.5 rounded-xl border border-slate-700/40 text-center">
+                <span class="block text-[11px] text-slate-400 font-medium">ลังทั้งหมด</span>
+                <span id="stat-boxes" class="text-lg font-bold text-emerald-400">0</span>
+            </div>
+            <div class="bg-slate-800/60 p-2.5 rounded-xl border border-slate-700/40 text-center">
+                <span class="block text-[11px] text-slate-400 font-medium">ชั้นสูงสุด</span>
+                <span id="stat-max-layers" class="text-lg font-bold text-amber-400">0</span>
+            </div>
+        </div>
+
+        <!-- Pallet Tree view list -->
+        <div class="flex-1 overflow-y-auto p-4 space-y-3" id="pallet-list">
+            <!-- Dynamic pallet list -->
+        </div>
+
+        <!-- Firebase Settings Drawer Toggle -->
+        <div class="p-3 border-t border-slate-800 bg-slate-900/80 text-xs flex justify-between items-center text-slate-400">
+            <span>การเชื่อมต่อ Cloud Firestore</span>
+            <button id="btn-toggle-firebase-modal" class="text-indigo-400 hover:underline">
+                ตั้งค่า
+            </button>
+        </div>
+    </div>
+
+    <!-- Modal: Add / Edit Box -->
+    <div id="modal-box" class="hidden fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="glass-panel w-full max-w-md rounded-2xl p-6 shadow-2xl border border-slate-700 animate-in fade-in zoom-in duration-200">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-lg font-bold text-slate-100 flex items-center gap-2" id="modal-box-title">
+                    <i class="fa-solid fa-box text-indigo-400"></i> เพิ่มลังเอกสารใหม่
+                </h3>
+                <button class="btn-close-modal text-slate-400 hover:text-white">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+            <form id="form-box" class="space-y-4">
+                <input type="hidden" id="input-box-id">
+                <div>
+                    <label class="block text-xs font-medium text-slate-300 mb-1">ชื่อลัง / รหัสเอกสาร <span class="text-rose-400">*</span></label>
+                    <input type="text" id="input-box-label" required placeholder="เช่น BOX-2026-001 เอกสารบัญชี" 
+                           class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-100 focus:outline-none focus:border-indigo-500">
+                </div>
+                <div>
+                    <label class="block text-xs font-medium text-slate-300 mb-1">เลือกพาเลทเริ่มต้น <span class="text-rose-400">*</span></label>
+                    <select id="select-box-pallet" required 
+                            class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-100 focus:outline-none focus:border-indigo-500">
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs font-medium text-slate-300 mb-1">โทนสีของลังเอกสาร</label>
+                    <div class="flex gap-2" id="color-picker-container">
+                        <button type="button" data-color="#c29b38" class="w-8 h-8 rounded-full bg-[#c29b38] border-2 border-white ring-2 ring-indigo-500"></button>
+                        <button type="button" data-color="#3b82f6" class="w-8 h-8 rounded-full bg-blue-500 border-2 border-transparent"></button>
+                        <button type="button" data-color="#10b981" class="w-8 h-8 rounded-full bg-emerald-500 border-2 border-transparent"></button>
+                        <button type="button" data-color="#f59e0b" class="w-8 h-8 rounded-full bg-amber-500 border-2 border-transparent"></button>
+                        <button type="button" data-color="#ef4444" class="w-8 h-8 rounded-full bg-rose-500 border-2 border-transparent"></button>
+                        <button type="button" data-color="#8b5cf6" class="w-8 h-8 rounded-full bg-purple-500 border-2 border-transparent"></button>
+                    </div>
+                    <input type="hidden" id="input-box-color" value="#c29b38">
+                </div>
+                <div>
+                    <label class="block text-xs font-medium text-slate-300 mb-1">รายละเอียดเพิ่มเติม / หมายเหตุ</label>
+                    <textarea id="input-box-notes" rows="2" placeholder="รายละเอียดเนื้อหาภายในลัง..." 
+                              class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-100 focus:outline-none focus:border-indigo-500"></textarea>
+                </div>
+                <div class="flex justify-end gap-2 pt-2">
+                    <button type="button" class="btn-close-modal px-4 py-2 rounded-xl text-xs font-medium bg-slate-800 text-slate-300 hover:bg-slate-700">ยกเลิก</button>
+                    <button type="submit" class="px-5 py-2 rounded-xl text-xs font-medium bg-indigo-600 text-white hover:bg-indigo-500 shadow-lg shadow-indigo-600/30">บันทึกข้อมูล</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal: Firebase Config -->
+    <div id="modal-firebase" class="hidden fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="glass-panel w-full max-w-lg rounded-2xl p-6 shadow-2xl border border-slate-700">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-lg font-bold text-slate-100 flex items-center gap-2">
+                    <i class="fa-solid fa-cloud text-indigo-400"></i> ตั้งค่าการเชื่อมต่อ Firebase Firestore
+                </h3>
+                <button class="btn-close-firebase text-slate-400 hover:text-white">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+            <p class="text-xs text-slate-400 mb-4">ระบบเชื่อมต่อ Firebase อัตโนมัติ หากต้องการเปลี่ยนคีย์ Config สามารถใส่ JSON ใหม่ด้านล่างนี้ได้</p>
             
-            <!-- Left Control Panel -->
-            <div class="md:col-span-5 lg:col-span-4 glass-panel p-5 rounded-2xl shadow-2xl flex flex-col gap-4 max-h-[80vh] overflow-y-auto custom-scrollbar">
-                
-                <!-- Search Box -->
-                <div class="flex flex-col gap-2 border-b border-slate-700/60 pb-4">
-                    <label class="text-xs font-semibold text-cyan-400 flex items-center gap-1.5">
-                        <i data-lucide="search" class="w-3.5 h-3.5"></i> ค้นหาชื่อข้างกล่อง
-                    </label>
-                    <div class="relative">
-                        <input type="text" id="search-input" placeholder="พิมพ์ชื่อกล่องเพื่อไฮไลต์ 3D..." 
-                            class="w-full bg-slate-900/80 border border-slate-700 rounded-xl px-3.5 py-2 text-sm text-white focus:outline-none focus:border-cyan-500 pr-8 transition">
-                        <button id="search-clear" class="absolute right-2.5 top-2.5 text-slate-400 hover:text-white hidden">
-                            <i data-lucide="x" class="w-4 h-4"></i>
-                        </button>
-                    </div>
-                    <div id="search-results-list" class="flex flex-col gap-1.5 mt-1 max-h-32 overflow-y-auto custom-scrollbar hidden"></div>
+            <form id="form-firebase" class="space-y-4">
+                <div>
+                    <label class="block text-xs font-medium text-slate-300 mb-1">Firebase Configuration (JSON Object)</label>
+                    <textarea id="input-firebase-config" rows="8" class="w-full font-mono text-xs bg-slate-900 border border-slate-700 rounded-xl p-3 text-slate-200 focus:outline-none focus:border-indigo-500"></textarea>
                 </div>
-
-                <!-- Add Box Form -->
-                <div class="flex flex-col gap-3">
-                    <h2 class="text-sm font-semibold text-slate-200 flex items-center gap-2">
-                        <i data-lucide="box" class="w-4 h-4 text-indigo-400"></i> เพิ่มลังแฟ้มลงพาเลท
-                    </h2>
-                    
-                    <div class="flex flex-col gap-1.5">
-                        <label class="text-xs text-slate-400">เลือกพาเลทเป้าหมาย</label>
-                        <select id="select-pallet" class="bg-slate-900/80 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-indigo-500 transition">
-                        </select>
-                    </div>
-
-                    <div class="flex flex-col gap-1.5">
-                        <label class="text-xs text-slate-400">ชื่อข้างกล่อง / รหัสเอกสาร</label>
-                        <input type="text" id="input-box-label" placeholder="ตัวอย่าง: แฟ้มบัญชี 2567/01" 
-                            class="bg-slate-900/80 border border-slate-700 rounded-xl px-3.5 py-2 text-sm text-white focus:outline-none focus:border-indigo-500 transition">
-                    </div>
-
-                    <div class="grid grid-cols-2 gap-2 pt-1">
-                        <button id="btn-add-box" class="bg-indigo-600 hover:bg-indigo-500 active:scale-95 text-white text-sm font-medium py-2.5 px-4 rounded-xl flex items-center justify-center gap-2 transition shadow-lg shadow-indigo-600/30">
-                            <i data-lucide="plus" class="w-4 h-4"></i> เพิ่มกล่อง
-                        </button>
-                        <button id="btn-add-pallet" class="bg-slate-800 hover:bg-slate-700 text-slate-200 text-sm font-medium py-2.5 px-4 rounded-xl border border-slate-700 flex items-center justify-center gap-2 transition">
-                            <i data-lucide="layer-plus" class="w-4 h-4 text-cyan-400"></i> เพิ่มพาเลท
-                        </button>
+                <div class="flex justify-between items-center pt-2">
+                    <button type="button" id="btn-clear-firebase" class="text-xs text-rose-400 hover:underline">ล้างค่า Config (สลับใช้ Offline LocalStorage)</button>
+                    <div class="flex gap-2">
+                        <button type="button" class="btn-close-firebase px-4 py-2 rounded-xl text-xs font-medium bg-slate-800 text-slate-300 hover:bg-slate-700">ยกเลิก</button>
+                        <button type="submit" class="px-5 py-2 rounded-xl text-xs font-medium bg-indigo-600 text-white hover:bg-indigo-500 shadow-lg">เชื่อมต่อ Cloud</button>
                     </div>
                 </div>
-
-                <div class="text-[11px] text-slate-400 bg-slate-900/40 p-3 rounded-xl border border-slate-800/80 flex flex-col gap-1">
-                    <div class="font-medium text-slate-300">💡 เคล็ดลับการจัดการ:</div>
-                    <div>• คลิกที่กล่องบนจอ 3D เพื่อซูมดูข้อมูลได้ทันที</div>
-                    <div>• กดปุ่ม 🔄 ในรายการขวาเพื่อย้ายกล่องไปพาเลทอื่น</div>
-                </div>
-
-            </div>
-
-            <!-- Right Panel: Inventory Quick Summary -->
-            <div class="md:col-span-7 lg:col-span-8 glass-panel p-5 rounded-2xl shadow-2xl max-h-[40vh] md:max-h-[80vh] overflow-y-auto custom-scrollbar flex flex-col gap-3">
-                <div class="flex justify-between items-center border-b border-slate-700/60 pb-2">
-                    <h2 class="text-sm font-semibold text-slate-200 flex items-center gap-2">
-                        <i data-lucide="list" class="w-4 h-4 text-cyan-400"></i> สรุปรายการพาเลทและลังแฟ้ม
-                    </h2>
-                    <span id="pallet-count-badge" class="text-xs bg-indigo-950 text-indigo-300 border border-indigo-800 px-2.5 py-0.5 rounded-full font-medium">
-                        0 พาเลท
-                    </span>
-                </div>
-
-                <div id="pallet-list-container" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 pt-1">
-                </div>
-            </div>
-
+            </form>
         </div>
     </div>
 
     <!-- Application Script Logic -->
-    <script>
-        function renderIcons() {
-            if (typeof lucide !== 'undefined' && lucide.createIcons) {
-                lucide.createIcons();
-            }
-        }
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        import { getFirestore, collection, onSnapshot, doc, setDoc, deleteDoc, writeBatch } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
-        const firebaseConfig = {
+        // Embed DEFAULT Firebase Configuration
+        const DEFAULT_FIREBASE_CONFIG = {
             apiKey: "AIzaSyBX_HkxQttRGlZ81UaE3fsWtJLQb9MBQqw",
             authDomain: "gen-lang-client-0163925046.firebaseapp.com",
             projectId: "gen-lang-client-0163925046",
@@ -191,659 +278,943 @@
             measurementId: "G-EQDGSMGTFJ"
         };
 
+        // ==========================================
+        // 1. CONSTANTS & GEOMETRY DIMENSIONS
+        // ==========================================
+        const PALLET_DIM = { width: 2.2, height: 0.2, depth: 2.2 };
+        const BOX_DIM = { width: 0.95, height: 0.7, depth: 0.95 };
+        const GRID_SPACING = { x: 3.2, z: 3.2 };
+        const COLS_PER_ROW = 3;
+
+        // Application State
+        let pallets = [];
+        let boxes = [];
+        let activeSearchTerm = '';
+        let isFirebaseActive = false;
         let db = null;
-        let isFirebaseLive = false;
-        let palletsData = [];
-        let highlightedBoxIds = new Set();
-        let searchPulseTime = 0;
+        let unsubscribeListeners = [];
 
-        let scene, camera, renderer, controls, raycaster, mouse;
-        let pallet3DGroup = new THREE.Group();
-        let boxMeshMap = new Map();
+        // Three.js Core Variables
+        let scene, camera, renderer, controls;
+        let palletMeshes = new Map(); // palletId -> Mesh Group
+        let boxMeshes = new Map();    // boxId -> Mesh Group
+        let labelTexturesCache = new Map();
 
-        const LAYER_COLORS = [
-            0x3b82f6, 0x10b981, 0xf59e0b, 0x8b5cf6, 0xec4899, 0x06b6d4
-        ];
+        // Interactive Dragging Variables
+        const raycaster = new THREE.Raycaster();
+        const mouse = new THREE.Vector2();
+        const dragPlane = new THREE.Plane();
+        const planeIntersect = new THREE.Vector3();
 
-        function initFirebase() {
-            const statusBadge = document.getElementById('status-badge');
-            try {
-                if (typeof firebase !== 'undefined' && !firebase.apps.length) {
-                    firebase.initializeApp(firebaseConfig);
-                    db = firebase.firestore();
-                    isFirebaseLive = true;
-                    
-                    statusBadge.innerHTML = `
-                        <span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
-                        <span class="text-emerald-400">CLOUD LIVE</span>
-                    `;
+        let isDragging = false;
+        let draggedBoxMesh = null;
+        let dragOriginalPos = new THREE.Vector3();
+        let currentHoveredPalletId = null;
 
-                    db.collection('pallet_system').doc('current_state')
-                      .onSnapshot((doc) => {
-                          if (doc.exists && doc.data().pallets) {
-                              palletsData = doc.data().pallets;
-                          } else {
-                              if (palletsData.length === 0) createInitialData();
-                          }
-                          updateAll();
-                      }, (err) => {
-                          enableLocalStorageFallback();
-                      });
-                } else {
-                    enableLocalStorageFallback();
-                }
-            } catch (error) {
-                enableLocalStorageFallback();
-            }
-        }
-
-        function enableLocalStorageFallback() {
-            isFirebaseLive = false;
-            const statusBadge = document.getElementById('status-badge');
-            statusBadge.innerHTML = `
-                <span class="w-2.5 h-2.5 rounded-full bg-amber-500"></span>
-                <span class="text-amber-400">LOCAL STORAGE MODE</span>
-            `;
-            loadFromLocalStorage();
-        }
-
-        function createInitialData() {
-            palletsData = [
-                { id: 'P1', name: 'พาเลท A (โซน 1)', boxes: [] },
-                { id: 'P2', name: 'พาเลท B (โซน 1)', boxes: [] },
-                { id: 'P3', name: 'พาเลท C (โซน 2)', boxes: [] }
-            ];
-            saveData();
-        }
-
-        function saveData() {
-            if (isFirebaseLive && db) {
-                db.collection('pallet_system').doc('current_state').set({
-                    pallets: palletsData,
-                    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-                }).catch(err => {
-                    saveToLocalStorage();
-                });
-            } else {
-                saveToLocalStorage();
-            }
-        }
-
-        function saveToLocalStorage() {
-            localStorage.setItem('pallet_system_data', JSON.stringify(palletsData));
-            updateAll();
-        }
-
-        function loadFromLocalStorage() {
-            const saved = localStorage.getItem('pallet_system_data');
-            if (saved) {
-                try {
-                    palletsData = JSON.parse(saved);
-                } catch(e) {
-                    createInitialData();
-                }
-            } else {
-                createInitialData();
-            }
-            updateAll();
-        }
-
-        function init3D() {
+        // ==========================================
+        // 2. THREE.JS SCENE INITIALIZATION
+        // ==========================================
+        function initThreeScene() {
             const container = document.getElementById('canvas-container');
             
+            // Scene setup
             scene = new THREE.Scene();
-            scene.background = new THREE.Color(0x0f172a);
-            scene.fog = new THREE.FogExp2(0x0f172a, 0.015);
+            scene.background = new THREE.Color(0x0b0f19);
+            scene.fog = new THREE.FogExp2(0x0b0f19, 0.025);
 
-            camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
-            camera.position.set(0, 18, 26);
+            // Camera setup
+            camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 1000);
+            camera.position.set(6, 8, 11);
 
-            renderer = new THREE.WebGLRenderer({ antialias: true });
-            renderer.setSize(window.innerWidth, window.innerHeight);
+            // Renderer setup
+            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+            renderer.setSize(container.clientWidth, container.clientHeight);
             renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
             renderer.shadowMap.enabled = true;
             renderer.shadowMap.type = THREE.PCFSoftShadowMap;
             container.appendChild(renderer.domElement);
 
+            // Controls setup
             controls = new THREE.OrbitControls(camera, renderer.domElement);
             controls.enableDamping = true;
             controls.dampingFactor = 0.05;
-            controls.maxPolarAngle = Math.PI / 2 - 0.05;
-            controls.minDistance = 5;
-            controls.maxDistance = 60;
+            controls.maxPolarAngle = Math.PI / 2 - 0.02;
+            controls.minDistance = 2;
+            controls.maxDistance = 50;
 
-            raycaster = new THREE.Raycaster();
-            mouse = new THREE.Vector2();
-
-            const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
+            // Lighting setup
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.75);
             scene.add(ambientLight);
 
-            const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            const dirLight = new THREE.DirectionalLight(0xffffff, 0.85);
             dirLight.position.set(15, 25, 15);
             dirLight.castShadow = true;
+            dirLight.shadow.mapSize.width = 2048;
+            dirLight.shadow.mapSize.height = 2048;
+            dirLight.shadow.bias = -0.0001;
             scene.add(dirLight);
 
-            const fillLight = new THREE.DirectionalLight(0x38bdf8, 0.3);
+            const fillLight = new THREE.DirectionalLight(0x38bdf8, 0.35);
             fillLight.position.set(-15, 10, -15);
             scene.add(fillLight);
 
-            const gridHelper = new THREE.GridHelper(60, 30, 0x38bdf8, 0x1e293b);
-            gridHelper.position.y = -0.01;
+            // Floor & Grid
+            const gridHelper = new THREE.GridHelper(60, 60, 0x334155, 0x1e293b);
+            gridHelper.position.y = 0;
             scene.add(gridHelper);
 
-            scene.add(pallet3DGroup);
+            const floorGeo = new THREE.PlaneGeometry(100, 100);
+            const floorMat = new THREE.MeshStandardMaterial({ color: 0x090d16, roughness: 0.9, metalness: 0.1 });
+            const floor = new THREE.Mesh(floorGeo, floorMat);
+            floor.rotation.x = -Math.PI / 2;
+            floor.receiveShadow = true;
+            scene.add(floor);
+
+            // Attach 3D Drag & Pointer Event Listeners
+            container.addEventListener('pointerdown', onPointerDown);
+            container.addEventListener('pointermove', onPointerMove);
+            container.addEventListener('pointerup', onPointerUp);
 
             window.addEventListener('resize', onWindowResize);
-            window.addEventListener('click', onCanvasClick);
             animate();
         }
 
         function onWindowResize() {
-            camera.aspect = window.innerWidth / window.innerHeight;
+            const container = document.getElementById('canvas-container');
+            camera.aspect = container.clientWidth / container.clientHeight;
             camera.updateProjectionMatrix();
-            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setSize(container.clientWidth, container.clientHeight);
         }
 
-        function onCanvasClick(event) {
-            if (event.target.tagName !== 'CANVAS') return;
-            mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
-            mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+        function animate(time) {
+            requestAnimationFrame(animate);
+            controls.update();
+
+            // Search matching box glow pulse animation using GSAP timeline/sine
+            boxMeshes.forEach((mesh) => {
+                if (mesh.userData.isHighlighted && !isDragging) {
+                    const scaleFactor = 1 + Math.sin(time * 0.006) * 0.04;
+                    mesh.scale.set(scaleFactor, scaleFactor, scaleFactor);
+                    if (mesh.userData.boxMaterial) {
+                        mesh.userData.boxMaterial.emissive.setHex(0x554400);
+                    }
+                } else if (mesh !== draggedBoxMesh) {
+                    mesh.scale.set(1, 1, 1);
+                    if (mesh.userData.boxMaterial) {
+                        mesh.userData.boxMaterial.emissive.setHex(0x000000);
+                    }
+                }
+            });
+
+            renderer.render(scene, camera);
+        }
+
+        // Camera Helper View Controls
+        window.setCameraView = function(viewType) {
+            const target = controls.target.clone();
+            let camPos = new THREE.Vector3();
+
+            if (viewType === 'top') {
+                camPos.set(target.x, target.y + 14, target.z + 0.001);
+            } else if (viewType === 'front') {
+                camPos.set(target.x, target.y + 2, target.z + 12);
+            } else {
+                camPos.set(target.x + 6, target.y + 7, target.z + 9);
+            }
+
+            gsap.to(camera.position, {
+                x: camPos.x,
+                y: camPos.y,
+                z: camPos.z,
+                duration: 0.8,
+                ease: "power2.out"
+            });
+        };
+
+        function focusCameraOn(targetPos) {
+            gsap.to(controls.target, {
+                x: targetPos.x,
+                y: targetPos.y,
+                z: targetPos.z,
+                duration: 0.8,
+                ease: "power2.out"
+            });
+
+            gsap.to(camera.position, {
+                x: targetPos.x + 4,
+                y: targetPos.y + 4,
+                z: targetPos.z + 6,
+                duration: 0.8,
+                ease: "power2.out"
+            });
+        }
+
+        // ==========================================
+        // 3. 3D DRAG & DROP LOGIC (Raycasting)
+        // ==========================================
+        function updateMouseCoords(e) {
+            const rect = renderer.domElement.getBoundingClientRect();
+            mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+            mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+        }
+
+        function onPointerDown(e) {
+            if (e.button !== 0) return; // Only left click drag
+            updateMouseCoords(e);
 
             raycaster.setFromCamera(mouse, camera);
-            const intersects = raycaster.intersectObjects(pallet3DGroup.children, true);
+            const clickableBoxes = Array.from(boxMeshes.values());
+            const intersects = raycaster.intersectObjects(clickableBoxes, true);
 
             if (intersects.length > 0) {
+                // Find top group object representing box
                 let obj = intersects[0].object;
-                while (obj && !obj.userData.boxId && obj.parent && obj !== pallet3DGroup) {
+                while (obj.parent && obj.parent !== scene) {
                     obj = obj.parent;
                 }
-                if (obj && obj.userData.boxId) {
-                    focusBox(obj.userData.boxId, obj.userData.palletId);
+
+                if (obj.userData && obj.userData.id) {
+                    isDragging = true;
+                    draggedBoxMesh = obj;
+                    dragOriginalPos.copy(obj.position);
+
+                    // Disable OrbitControls rotation while dragging
+                    controls.enabled = false;
+
+                    // Set drag plane parallel to ground at dragging Y level
+                    dragPlane.setFromNormalAndCoplanarPoint(
+                        new THREE.Vector3(0, 1, 0),
+                        new THREE.Vector3(0, obj.position.y + 0.3, 0)
+                    );
+
+                    // Show Dragging UI info banner
+                    document.getElementById('drag-box-name').innerText = obj.userData.label;
+                    document.getElementById('drag-info-banner').classList.remove('hidden');
+                    document.getElementById('drag-info-banner').classList.add('flex');
+
+                    // GSAP Scale Up effect on Drag
+                    gsap.to(obj.scale, { x: 1.08, y: 1.08, z: 1.08, duration: 0.2 });
                 }
             }
         }
 
-        function render3DScene() {
-            while(pallet3DGroup.children.length > 0) { 
-                const obj = pallet3DGroup.children[0];
-                pallet3DGroup.remove(obj);
-            }
-            boxMeshMap.clear();
+        function onPointerMove(e) {
+            updateMouseCoords(e);
 
-            const palletWidth = 3.6;
-            const palletLength = 3.6;
-            const palletHeight = 0.4;
-            const boxWidth = 1.6;
-            const boxLength = 1.6;
-            const boxHeight = 1.2;
-            const gap = 0.15;
+            if (isDragging && draggedBoxMesh) {
+                raycaster.setFromCamera(mouse, camera);
+                if (raycaster.ray.intersectPlane(dragPlane, planeIntersect)) {
+                    // Update dragged box position in 3D scene smoothly
+                    draggedBoxMesh.position.x = planeIntersect.x;
+                    draggedBoxMesh.position.z = planeIntersect.z;
+                }
 
-            const cols = 3;
-            const spacingX = 5.5;
-            const spacingZ = 5.5;
+                // Check collision/hovering over pallets
+                let closestPalletId = null;
+                let minDist = 2.0; // Distance threshold for pallet drop slot
 
-            const localOffsets = [
-                { x: -(boxWidth / 2 + gap / 2), z: -(boxLength / 2 + gap / 2) },
-                { x:  (boxWidth / 2 + gap / 2), z: -(boxLength / 2 + gap / 2) },
-                { x: -(boxWidth / 2 + gap / 2), z:  (boxLength / 2 + gap / 2) },
-                { x:  (boxWidth / 2 + gap / 2), z:  (boxLength / 2 + gap / 2) }
-            ];
-
-            palletsData.forEach((pallet, pIndex) => {
-                const col = pIndex % cols;
-                const row = Math.floor(pIndex / cols);
-                const posX = (col - 1) * spacingX;
-                const posZ = row * spacingZ;
-
-                const palletMesh = createPalletMesh(palletWidth, palletHeight, palletLength);
-                palletMesh.position.set(posX, palletHeight / 2, posZ);
-                pallet3DGroup.add(palletMesh);
-
-                (pallet.boxes || []).forEach((box, bIndex) => {
-                    const layerIndex = Math.floor(bIndex / 4);
-                    const slotIndex = bIndex % 4;
-
-                    const boxX = posX + localOffsets[slotIndex].x;
-                    const boxY = palletHeight + (layerIndex * boxHeight) + (boxHeight / 2);
-                    const boxZ = posZ + localOffsets[slotIndex].z;
-
-                    const colorHex = LAYER_COLORS[layerIndex % LAYER_COLORS.length];
-                    const boxMesh = createBoxMesh(boxWidth, boxHeight, boxLength, colorHex, box.label || 'ลังไม่มีชื่อ');
-                    
-                    boxMesh.position.set(boxX, boxY, boxZ);
-                    boxMesh.userData = { 
-                        boxId: box.id, 
-                        palletId: pallet.id, 
-                        label: box.label,
-                        originalColor: colorHex
-                    };
-
-                    pallet3DGroup.add(boxMesh);
-                    boxMeshMap.set(box.id, boxMesh);
-                });
-            });
-        }
-
-        function createPalletMesh(w, h, l) {
-            const group = new THREE.Group();
-            const woodMat = new THREE.MeshStandardMaterial({ color: 0xc2410c, roughness: 0.8 });
-
-            const plankCount = 5;
-            const plankWidth = w / plankCount - 0.05;
-            for(let i=0; i<plankCount; i++) {
-                const plankGeo = new THREE.BoxGeometry(plankWidth, 0.08, l);
-                const plank = new THREE.Mesh(plankGeo, woodMat);
-                plank.position.x = -w/2 + plankWidth/2 + i * (plankWidth + 0.05);
-                plank.position.y = h/2 - 0.04;
-                plank.castShadow = true;
-                plank.receiveShadow = true;
-                group.add(plank);
-            }
-
-            const blockGeo = new THREE.BoxGeometry(w, h - 0.08, l * 0.2);
-            const block = new THREE.Mesh(blockGeo, woodMat);
-            block.position.y = -0.04;
-            block.castShadow = true;
-            block.receiveShadow = true;
-            group.add(block);
-
-            return group;
-        }
-
-        function createBoxMesh(w, h, l, colorHex, labelText) {
-            const geometry = new THREE.BoxGeometry(w, h, l);
-            const material = new THREE.MeshStandardMaterial({
-                color: colorHex,
-                roughness: 0.4,
-                metalness: 0.1,
-                transparent: true,
-                opacity: 1.0
-            });
-
-            const mesh = new THREE.Mesh(geometry, material);
-            mesh.castShadow = true;
-
-            const edges = new THREE.EdgesGeometry(geometry);
-            const lineMat = new THREE.LineBasicMaterial({ color: 0x0f172a, linewidth: 2 });
-            const line = new THREE.LineSegments(edges, lineMat);
-            mesh.add(line);
-
-            const canvas = document.createElement('canvas');
-            canvas.width = 256;
-            canvas.height = 128;
-            const ctx = canvas.getContext('2d');
-
-            ctx.fillStyle = '#ffffff';
-            ctx.fillRect(0, 0, 256, 128);
-            ctx.lineWidth = 8;
-            ctx.strokeStyle = '#0284c7';
-            ctx.strokeRect(0, 0, 256, 128);
-
-            ctx.fillStyle = '#0f172a';
-            ctx.font = 'bold 24px sans-serif';
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'middle';
-            
-            const text = labelText.length > 14 ? labelText.substring(0, 12) + '...' : labelText;
-            ctx.fillText(text, 128, 64);
-
-            const texture = new THREE.CanvasTexture(canvas);
-            const labelGeo = new THREE.PlaneGeometry(w * 0.85, h * 0.55);
-            const labelMat = new THREE.MeshBasicMaterial({ map: texture, side: THREE.DoubleSide });
-
-            const labelFront = new THREE.Mesh(labelGeo, labelMat);
-            labelFront.position.z = l / 2 + 0.01;
-            mesh.add(labelFront);
-
-            const labelBack = new THREE.Mesh(labelGeo, labelMat);
-            labelBack.position.z = -(l / 2 + 0.01);
-            labelBack.rotation.y = Math.PI;
-            mesh.add(labelBack);
-
-            return mesh;
-        }
-
-        function animate() {
-            requestAnimationFrame(animate);
-            if (controls) controls.update();
-
-            searchPulseTime += 0.05;
-            const searchInput = document.getElementById('search-input');
-            const query = searchInput ? searchInput.value.trim().toLowerCase() : '';
-
-            boxMeshMap.forEach((mesh, boxId) => {
-                if (query.length > 0) {
-                    if (highlightedBoxIds.has(boxId)) {
-                        const scaleFactor = 1 + Math.sin(searchPulseTime * 4) * 0.03;
-                        mesh.scale.set(scaleFactor, scaleFactor, scaleFactor);
-                        mesh.material.color.setHex(0xfacc15);
-                        mesh.material.opacity = 1.0;
-                    } else {
-                        mesh.scale.set(1, 1, 1);
-                        mesh.material.color.setHex(mesh.userData.originalColor);
-                        mesh.material.opacity = 0.25;
+                palletMeshes.forEach((pMesh, pId) => {
+                    const dist = new THREE.Vector2(draggedBoxMesh.position.x, draggedBoxMesh.position.z)
+                        .distanceTo(new THREE.Vector2(pMesh.position.x, pMesh.position.z));
+                    if (dist < minDist) {
+                        minDist = dist;
+                        closestPalletId = pId;
                     }
-                } else {
-                    mesh.scale.set(1, 1, 1);
-                    mesh.material.color.setHex(mesh.userData.originalColor);
-                    mesh.material.opacity = 1.0;
-                }
-            });
-
-            if (renderer && scene && camera) {
-                renderer.render(scene, camera);
-            }
-        }
-
-        function updateAll() {
-            render3DScene();
-            updateUI();
-            handleSearch();
-        }
-
-        function updateUI() {
-            const selectPallet = document.getElementById('select-pallet');
-            if (!selectPallet) return;
-            selectPallet.innerHTML = '';
-
-            if (palletsData.length === 0) {
-                const opt = document.createElement('option');
-                opt.text = '-- กรุณาเพิ่มพาเลท --';
-                selectPallet.add(opt);
-            } else {
-                palletsData.forEach(p => {
-                    const opt = document.createElement('option');
-                    opt.value = p.id;
-                    opt.text = `${p.name} (${p.boxes ? p.boxes.length : 0} ลัง)`;
-                    selectPallet.add(opt);
                 });
-            }
 
-            document.getElementById('pallet-count-badge').textContent = `${palletsData.length} พาเลท`;
+                currentHoveredPalletId = closestPalletId;
 
-            const container = document.getElementById('pallet-list-container');
-            container.innerHTML = '';
-
-            palletsData.forEach((pallet) => {
-                const card = document.createElement('div');
-                card.className = "bg-slate-900/90 border border-slate-700/80 rounded-xl p-3 flex flex-col gap-2.5 hover:border-slate-500 transition shadow-md";
-
-                const boxCount = pallet.boxes ? pallet.boxes.length : 0;
-                const layerCount = Math.ceil(boxCount / 4);
-
-                let boxesHTML = '';
-                if (boxCount === 0) {
-                    boxesHTML = `<p class="text-xs text-slate-500 italic py-1">ไม่มีลังบนพาเลทนี้</p>`;
-                } else {
-                    boxesHTML = pallet.boxes.map((b, idx) => {
-                        const layer = Math.floor(idx / 4) + 1;
-                        return `
-                            <div class="flex justify-between items-center text-xs bg-slate-800/80 px-2.5 py-1.5 rounded-lg border border-slate-700/50">
-                                <div class="flex items-center gap-1.5 truncate mr-1">
-                                    <span class="w-2 h-2 rounded-full" style="background-color: #${LAYER_COLORS[(layer-1)%LAYER_COLORS.length].toString(16)}"></span>
-                                    <span class="text-slate-200 truncate" title="${b.label}">${b.label}</span>
-                                </div>
-                                <div class="flex items-center gap-1.5 shrink-0">
-                                    <span class="text-[10px] text-slate-400 bg-slate-900 px-1.5 py-0.5 rounded">ชั้น ${layer}</span>
-                                    <button onclick="moveBoxPrompt('${pallet.id}', '${b.id}')" title="ย้ายกล่อง" class="text-cyan-400 hover:text-cyan-300 transition">🔄</button>
-                                    <button onclick="removeBox('${pallet.id}', '${b.id}')" title="ลบกล่อง" class="text-rose-400 hover:text-rose-300 transition">✖</button>
-                                </div>
-                            </div>
-                        `;
-                    }).join('');
-                }
-
-                card.innerHTML = `
-                    <div class="flex justify-between items-center border-b border-slate-800 pb-2">
-                        <div>
-                            <h3 class="text-xs font-bold text-cyan-300">${pallet.name}</h3>
-                            <p class="text-[10px] text-slate-400">${boxCount} ลัง (${layerCount} ชั้น)</p>
-                        </div>
-                        <div class="flex items-center gap-1">
-                            <button onclick="focusPallet('${pallet.id}')" title="ซูมกล้องไปที่พาเลทนี้" class="p-1 text-slate-400 hover:text-cyan-400 transition">👁️</button>
-                            <button onclick="removePallet('${pallet.id}')" title="ลบพาเลท" class="p-1 text-slate-400 hover:text-rose-400 transition">🗑️</button>
-                        </div>
-                    </div>
-                    <div class="flex flex-col gap-1.5 max-h-36 overflow-y-auto custom-scrollbar pr-0.5">
-                        ${boxesHTML}
-                    </div>
-                `;
-
-                container.appendChild(card);
-            });
-
-            renderIcons();
-        }
-
-        function addPallet() {
-            const name = prompt("กรุณาระบุชื่อพาเลท / โซนจัดเก็บ:", `พาเลท ${String.fromCharCode(65 + palletsData.length)}`);
-            if (!name) return;
-
-            palletsData.push({ id: 'P_' + Date.now(), name: name.trim(), boxes: [] });
-            saveData();
-        }
-
-        function removePallet(palletId) {
-            if (!confirm("คุณแน่ใจหรือไม่ที่จะลบพาเลทนี้พร้อมลังเอกสารทั้งหมด?")) return;
-            palletsData = palletsData.filter(p => p.id !== palletId);
-            saveData();
-        }
-
-        function addBox() {
-            const selectPallet = document.getElementById('select-pallet');
-            const inputLabel = document.getElementById('input-box-label');
-            
-            const palletId = selectPallet.value;
-            const label = inputLabel.value.trim();
-
-            if (!palletId || selectPallet.options[0].text.includes('--')) {
-                alert("กรุณาเพิ่มพาเลทก่อนทำการวางกล่อง");
-                return;
-            }
-
-            if (!label) {
-                alert("กรุณากรอกชื่อข้างกล่องหรือรหัสเอกสาร");
-                return;
-            }
-
-            const pallet = palletsData.find(p => p.id === palletId);
-            if (pallet) {
-                if (!pallet.boxes) pallet.boxes = [];
-                pallet.boxes.push({ id: 'B_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4), label: label });
-                inputLabel.value = '';
-                saveData();
-            }
-        }
-
-        function removeBox(palletId, boxId) {
-            const pallet = palletsData.find(p => p.id === palletId);
-            if (pallet && pallet.boxes) {
-                pallet.boxes = pallet.boxes.filter(b => b.id !== boxId);
-                saveData();
-            }
-        }
-
-        function moveBoxPrompt(fromPalletId, boxId) {
-            const targetPalletId = prompt("ย้ายไปพาเลทใด? (กรอก ID หรือชื่อพาเลท):\n" + palletsData.map(p => `${p.id} = ${p.name}`).join("\n"));
-            if (!targetPalletId) return;
-
-            const targetPallet = palletsData.find(p => p.id === targetPalletId || p.name.includes(targetPalletId));
-            if (!targetPallet) {
-                alert("ไม่พบพาเลทปลายทางที่ระบุ");
-                return;
-            }
-
-            let boxObj = null;
-            const fromPallet = palletsData.find(p => p.id === fromPalletId);
-            if (fromPallet && fromPallet.boxes) {
-                fromPallet.boxes = fromPallet.boxes.filter(b => {
-                    if (b.id === boxId) {
-                        boxObj = b;
-                        return false;
-                    }
-                    return true;
-                });
-            }
-
-            if (boxObj) {
-                if (!targetPallet.boxes) targetPallet.boxes = [];
-                targetPallet.boxes.push(boxObj);
-                saveData();
-            }
-        }
-
-        function handleSearch() {
-            const searchInput = document.getElementById('search-input');
-            const searchClear = document.getElementById('search-clear');
-            const resultsList = document.getElementById('search-results-list');
-            if (!searchInput) return;
-
-            const query = searchInput.value.trim().toLowerCase();
-
-            highlightedBoxIds.clear();
-            resultsList.innerHTML = '';
-
-            if (query.length > 0) {
-                searchClear.classList.remove('hidden');
-                resultsList.classList.remove('hidden');
-
-                let matchCount = 0;
-                palletsData.forEach(pallet => {
-                    (pallet.boxes || []).forEach((box, idx) => {
-                        if (box.label.toLowerCase().includes(query)) {
-                            highlightedBoxIds.add(box.id);
-                            matchCount++;
-
-                            const layer = Math.floor(idx / 4) + 1;
-                            const item = document.createElement('div');
-                            item.className = "flex justify-between items-center bg-slate-800/90 hover:bg-slate-700 px-3 py-1.5 rounded-lg border border-slate-600 text-xs cursor-pointer transition";
-                            item.onclick = () => focusBox(box.id, pallet.id);
-                            item.innerHTML = `
-                                <div class="truncate mr-2">
-                                    <span class="font-medium text-amber-300">${box.label}</span>
-                                    <span class="text-[10px] text-slate-400 block">${pallet.name} • ชั้น ${layer}</span>
-                                </div>
-                                <span class="text-cyan-400">🎯</span>
-                            `;
-                            resultsList.appendChild(item);
+                // Highlight hovered pallet visually
+                palletMeshes.forEach((pMesh, pId) => {
+                    pMesh.children.forEach(c => {
+                        if (c.material) {
+                            c.material.color.setHex(pId === currentHoveredPalletId ? 0x6366f1 : 0x855e42);
                         }
                     });
                 });
+            }
+        }
 
-                if (matchCount === 0) {
-                    resultsList.innerHTML = `<p class="text-xs text-slate-400 italic p-1.5 text-center">ไม่พบกล่องที่ตรงกับคำค้นหา</p>`;
+        async function onPointerUp(e) {
+            if (!isDragging) return;
+
+            isDragging = false;
+            controls.enabled = true; // Re-enable OrbitControls camera movement
+
+            document.getElementById('drag-info-banner').classList.add('hidden');
+            document.getElementById('drag-info-banner').classList.remove('flex');
+
+            // Reset pallet highlights
+            palletMeshes.forEach((pMesh) => {
+                pMesh.children.forEach(c => {
+                    if (c.material) c.material.color.setHex(0x855e42);
+                });
+            });
+
+            if (draggedBoxMesh) {
+                const boxId = draggedBoxMesh.userData.id;
+                const originalPalletId = draggedBoxMesh.userData.palletId;
+                const targetPalletId = currentHoveredPalletId || originalPalletId;
+
+                const boxObj = boxes.find(b => b.id === boxId);
+
+                if (boxObj && targetPalletId) {
+                    // Move Box to new pallet
+                    if (targetPalletId !== originalPalletId) {
+                        boxObj.palletId = targetPalletId;
+                        if (isFirebaseActive && db) {
+                            await setDoc(doc(db, "boxes", boxId), boxObj, { merge: true });
+                        } else {
+                            saveLocalStorage();
+                        }
+                    }
                 }
+
+                // Smooth GSAP Drop Animation to final calculated slot
+                update3DScene();
+                
+                const targetMesh = boxMeshes.get(boxId);
+                if (targetMesh) {
+                    const targetPos = targetMesh.position.clone();
+                    targetMesh.position.copy(draggedBoxMesh.position); // Start GSAP from dragged position
+
+                    gsap.to(targetMesh.position, {
+                        x: targetPos.x,
+                        y: targetPos.y,
+                        z: targetPos.z,
+                        duration: 0.4,
+                        ease: "bounce.out"
+                    });
+
+                    gsap.to(targetMesh.scale, { x: 1, y: 1, z: 1, duration: 0.2 });
+                }
+
+                draggedBoxMesh = null;
+            }
+        }
+
+        // ==========================================
+        // 4. 3D MESH BUILDERS (Pallets & Boxes)
+        // ==========================================
+        function createBoxLabelTexture(label, boxColorHex) {
+            const cacheKey = `${label}_${boxColorHex}`;
+            if (labelTexturesCache.has(cacheKey)) {
+                return labelTexturesCache.get(cacheKey);
+            }
+
+            const canvas = document.createElement('canvas');
+            canvas.width = 512;
+            canvas.height = 256;
+            const ctx = canvas.getContext('2d');
+
+            ctx.fillStyle = boxColorHex || '#c29b38';
+            ctx.fillRect(0, 0, 512, 256);
+
+            ctx.fillStyle = 'rgba(0,0,0,0.05)';
+            for (let i = 0; i < 256; i += 4) {
+                ctx.fillRect(0, i, 512, 2);
+            }
+
+            ctx.fillStyle = '#ffffff';
+            ctx.roundRect(30, 30, 452, 196, 16);
+            ctx.fill();
+
+            ctx.strokeStyle = '#cbd5e1';
+            ctx.lineWidth = 4;
+            ctx.stroke();
+
+            ctx.fillStyle = '#4f46e5';
+            ctx.fillRect(30, 30, 452, 24);
+
+            ctx.fillStyle = '#0f172a';
+            ctx.font = 'bold 36px Sans-Serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            
+            let displayText = label.length > 18 ? label.substring(0, 16) + '...' : label;
+            ctx.fillText(displayText, 256, 130);
+
+            ctx.fillStyle = '#1e293b';
+            const barcodeWidths = [4, 2, 6, 2, 8, 3, 2, 5, 2, 7, 3, 2, 6, 4, 2, 5, 8, 2];
+            let startX = 120;
+            for (let w of barcodeWidths) {
+                ctx.fillRect(startX, 175, w, 32);
+                startX += w + 6;
+            }
+
+            const texture = new THREE.CanvasTexture(canvas);
+            labelTexturesCache.set(cacheKey, texture);
+            return texture;
+        }
+
+        function createPalletMesh(palletData) {
+            const palletGroup = new THREE.Group();
+            const woodMat = new THREE.MeshStandardMaterial({ color: 0x855e42, roughness: 0.8 });
+
+            const plankGeo = new THREE.BoxGeometry(PALLET_DIM.width, 0.04, 0.22);
+            for (let i = -1; i <= 1; i += 0.4) {
+                const plank = new THREE.Mesh(plankGeo, woodMat);
+                plank.position.set(0, PALLET_DIM.height - 0.02, i * (PALLET_DIM.depth / 2.2));
+                plank.castShadow = true;
+                plank.receiveShadow = true;
+                palletGroup.add(plank);
+            }
+
+            const blockGeo = new THREE.BoxGeometry(0.2, PALLET_DIM.height - 0.04, PALLET_DIM.depth);
+            [-0.9, 0, 0.9].forEach(x => {
+                const block = new THREE.Mesh(blockGeo, woodMat);
+                block.position.set(x, (PALLET_DIM.height - 0.04) / 2, 0);
+                block.castShadow = true;
+                block.receiveShadow = true;
+                palletGroup.add(block);
+            });
+
+            const pos = getPalletWorldPosition(palletData.index);
+            palletGroup.position.set(pos.x, pos.y, pos.z);
+            palletGroup.userData = { id: palletData.id, type: 'pallet' };
+
+            return palletGroup;
+        }
+
+        function createBoxMesh(boxData, boxIndexOnPallet, palletWorldPos) {
+            const boxGroup = new THREE.Group();
+
+            // Strict 2x2 Grid per layer layout
+            const layer = Math.floor(boxIndexOnPallet / 4);
+            const spotInLayer = boxIndexOnPallet % 4;
+            const gridX = spotInLayer % 2;
+            const gridZ = Math.floor(spotInLayer / 2);
+
+            const offsetX = (gridX === 0 ? -1 : 1) * (BOX_DIM.width / 2 + 0.02);
+            const offsetZ = (gridZ === 0 ? -1 : 1) * (BOX_DIM.depth / 2 + 0.02);
+            const posY = PALLET_DIM.height + (layer * BOX_DIM.height) + (BOX_DIM.height / 2);
+
+            const labelTexture = createBoxLabelTexture(boxData.label, boxData.color || '#c29b38');
+            const sideMat = new THREE.MeshStandardMaterial({ map: labelTexture, roughness: 0.6 });
+            const topMat = new THREE.MeshStandardMaterial({ color: boxData.color || '#c29b38', roughness: 0.7 });
+
+            const boxMaterials = [sideMat, sideMat, topMat, topMat, sideMat, sideMat];
+
+            const boxGeo = new THREE.BoxGeometry(BOX_DIM.width, BOX_DIM.height, BOX_DIM.depth);
+            const boxMesh = new THREE.Mesh(boxGeo, boxMaterials);
+            boxMesh.castShadow = true;
+            boxMesh.receiveShadow = true;
+
+            boxGroup.add(boxMesh);
+
+            const targetPos = {
+                x: palletWorldPos.x + offsetX,
+                y: posY,
+                z: palletWorldPos.z + offsetZ
+            };
+
+            boxGroup.position.set(targetPos.x, targetPos.y, targetPos.z);
+            boxGroup.userData = { 
+                id: boxData.id, 
+                label: boxData.label, 
+                palletId: boxData.palletId,
+                layer: layer + 1,
+                boxMaterial: topMat,
+                isHighlighted: false
+            };
+
+            return boxGroup;
+        }
+
+        function getPalletWorldPosition(index) {
+            const row = Math.floor(index / COLS_PER_ROW);
+            const col = index % COLS_PER_ROW;
+
+            const startX = -((COLS_PER_ROW - 1) * GRID_SPACING.x) / 2;
+            const startZ = 0;
+
+            return {
+                x: startX + col * GRID_SPACING.x,
+                y: 0,
+                z: startZ + row * GRID_SPACING.z
+            };
+        }
+
+        // ==========================================
+        // 5. SCENE UPDATE & RE-RENDER
+        // ==========================================
+        function update3DScene() {
+            if (!scene) return;
+
+            palletMeshes.forEach(mesh => scene.remove(mesh));
+            boxMeshes.forEach(mesh => scene.remove(mesh));
+            palletMeshes.clear();
+            boxMeshes.clear();
+
+            const sortedPallets = [...pallets].sort((a, b) => a.index - b.index);
+
+            sortedPallets.forEach((pallet, pIdx) => {
+                const palletWorldPos = getPalletWorldPosition(pIdx);
+                const palletMesh = createPalletMesh({ ...pallet, index: pIdx });
+                scene.add(palletMesh);
+                palletMeshes.set(pallet.id, palletMesh);
+
+                const palletBoxes = boxes.filter(b => b.palletId === pallet.id);
+                
+                palletBoxes.forEach((box, boxIndexOnPallet) => {
+                    const boxMesh = createBoxMesh(box, boxIndexOnPallet, palletWorldPos);
+                    
+                    const matchesSearch = activeSearchTerm && box.label.toLowerCase().includes(activeSearchTerm.toLowerCase());
+                    
+                    if (activeSearchTerm) {
+                        if (matchesSearch) {
+                            boxMesh.userData.isHighlighted = true;
+                        } else {
+                            boxMesh.children.forEach(c => {
+                                if (c.material) {
+                                    if (Array.isArray(c.material)) {
+                                        c.material.forEach(m => { m.transparent = true; m.opacity = 0.2; });
+                                    } else {
+                                        c.material.transparent = true;
+                                        c.material.opacity = 0.2;
+                                    }
+                                }
+                            });
+                        }
+                    }
+
+                    scene.add(boxMesh);
+                    boxMeshes.set(box.id, boxMesh);
+                });
+            });
+
+            updateSidebarUI();
+            updateSearchResultsUI();
+        }
+
+        // ==========================================
+        // 6. UI RENDERERS & EVENT HANDLERS
+        // ==========================================
+        function updateSidebarUI() {
+            document.getElementById('stat-pallets').innerText = pallets.length;
+            document.getElementById('stat-boxes').innerText = boxes.length;
+
+            let maxLayer = 0;
+            pallets.forEach(p => {
+                const count = boxes.filter(b => b.palletId === p.id).length;
+                const layers = Math.ceil(count / 4);
+                if (layers > maxLayer) maxLayer = layers;
+            });
+            document.getElementById('stat-max-layers').innerText = maxLayer;
+
+            const palletListContainer = document.getElementById('pallet-list');
+            palletListContainer.innerHTML = '';
+
+            const sortedPallets = [...pallets].sort((a, b) => a.index - b.index);
+
+            if (sortedPallets.length === 0) {
+                palletListContainer.innerHTML = `
+                    <div class="text-center py-8 text-slate-500 text-xs">
+                        <i class="fa-solid fa-inbox text-3xl mb-2 block"></i>
+                        ยังไม่มีพาเลทในคลัง กด "เพิ่มพาเลทใหม่" เพื่อเริ่มต้น
+                    </div>`;
+                return;
+            }
+
+            sortedPallets.forEach((pallet, idx) => {
+                const palletBoxes = boxes.filter(b => b.palletId === pallet.id);
+                const totalLayers = Math.ceil(palletBoxes.length / 4);
+
+                const card = document.createElement('div');
+                card.className = 'glass-panel p-3 rounded-xl border border-slate-700/60 transition-all hover:border-slate-500';
+                
+                let boxesHtml = '';
+                palletBoxes.forEach((b, bIdx) => {
+                    const layerNum = Math.floor(bIdx / 4) + 1;
+                    boxesHtml += `
+                        <div class="flex justify-between items-center text-xs p-1.5 rounded-lg bg-slate-900/60 border border-slate-800 hover:border-slate-600 transition-all group">
+                            <span class="text-slate-200 font-medium truncate flex items-center gap-1.5" title="${b.label}">
+                                <span class="w-2 h-2 rounded-full" style="background-color: ${b.color || '#c29b38'}"></span>
+                                ${b.label}
+                            </span>
+                            <div class="flex items-center gap-2">
+                                <span class="text-[10px] px-1.5 py-0.5 rounded bg-slate-800 text-amber-400 font-mono">ชั้น ${layerNum}</span>
+                                <button onclick="deleteBox('${b.id}')" class="text-slate-500 hover:text-rose-400 opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <i class="fa-solid fa-trash-can text-xs"></i>
+                                </button>
+                            </div>
+                        </div>`;
+                });
+
+                card.innerHTML = `
+                    <div class="flex justify-between items-center mb-2 pb-2 border-b border-slate-800">
+                        <div class="flex items-center gap-2 cursor-pointer" onclick="focusPallet('${pallet.id}')">
+                            <span class="bg-indigo-500/20 text-indigo-400 font-bold text-xs px-2 py-0.5 rounded-md border border-indigo-500/30">
+                                พาเลท #${idx + 1}
+                            </span>
+                            <span class="text-xs font-semibold text-slate-200">${pallet.name || 'พาเลทมาตรฐาน'}</span>
+                        </div>
+                        <div class="flex items-center gap-1">
+                            <span class="text-[10px] text-slate-400 font-mono mr-1">${palletBoxes.length} ลัง (${totalLayers} ชั้น)</span>
+                            <button onclick="deletePallet('${pallet.id}')" class="text-slate-500 hover:text-rose-400 p-1 rounded hover:bg-slate-800" title="ลบพาเลท">
+                                <i class="fa-solid fa-trash-can text-xs"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="space-y-1.5 max-h-40 overflow-y-auto pr-1">
+                        ${palletBoxes.length > 0 ? boxesHtml : '<div class="text-[11px] text-slate-500 italic py-1 text-center">ไม่มีลังบนพาเลทนี้ (สามารถลากวาง 3D ได้)</div>'}
+                    </div>`;
+
+                palletListContainer.appendChild(card);
+            });
+
+            const selectPallet = document.getElementById('select-box-pallet');
+            selectPallet.innerHTML = sortedPallets.map((p, idx) => 
+                `<option value="${p.id}">พาเลท #${idx + 1} - ${p.name || 'พาเลทมาตรฐาน'} (${boxes.filter(b => b.palletId === p.id).length} ลัง)</option>`
+            ).join('');
+        }
+
+        function updateSearchResultsUI() {
+            const resultsPanel = document.getElementById('search-results-panel');
+            const resultsList = document.getElementById('search-results-list');
+            const searchCount = document.getElementById('search-count');
+
+            if (!activeSearchTerm) {
+                resultsPanel.classList.add('hidden');
+                resultsPanel.classList.remove('flex');
+                return;
+            }
+
+            const matchedBoxes = boxes.filter(b => b.label.toLowerCase().includes(activeSearchTerm.toLowerCase()));
+            searchCount.innerText = matchedBoxes.length;
+
+            resultsList.innerHTML = '';
+            if (matchedBoxes.length === 0) {
+                resultsList.innerHTML = '<div class="text-xs text-slate-400 py-2 text-center">ไม่พบลังเอกสารที่ค้นหา</div>';
             } else {
-                searchClear.classList.add('hidden');
-                resultsList.classList.add('hidden');
+                matchedBoxes.forEach(b => {
+                    const palletBoxes = boxes.filter(box => box.palletId === b.palletId);
+                    const boxIdx = palletBoxes.findIndex(box => box.id === b.id);
+                    const layer = Math.floor(boxIdx / 4) + 1;
+                    const palletNum = pallets.sort((x, y) => x.index - y.index).findIndex(p => p.id === b.palletId) + 1;
+
+                    const item = document.createElement('div');
+                    item.className = 'p-2 rounded-xl bg-slate-900/80 hover:bg-slate-800 border border-slate-700/50 cursor-pointer flex justify-between items-center transition-all';
+                    item.onclick = () => focusBox(b.id);
+                    item.innerHTML = `
+                        <div class="flex items-center gap-2 overflow-hidden">
+                            <span class="w-2.5 h-2.5 rounded-full flex-shrink-0" style="background-color: ${b.color || '#c29b38'}"></span>
+                            <span class="text-xs font-medium text-slate-100 truncate">${b.label}</span>
+                        </div>
+                        <div class="flex items-center gap-1 flex-shrink-0">
+                            <span class="text-[10px] bg-indigo-950 text-indigo-300 border border-indigo-800 px-1.5 py-0.5 rounded">พาเลท #${palletNum}</span>
+                            <span class="text-[10px] bg-amber-950 text-amber-300 border border-amber-800 px-1.5 py-0.5 rounded">ชั้น ${layer}</span>
+                        </div>`;
+                    resultsList.appendChild(item);
+                });
             }
 
-            renderIcons();
+            resultsPanel.classList.remove('hidden');
+            resultsPanel.classList.add('flex');
         }
 
-        function focusPallet(palletId) {
-            const pIndex = palletsData.findIndex(p => p.id === palletId);
-            if (pIndex === -1) return;
+        window.focusPallet = function(palletId) {
+            const palletMesh = palletMeshes.get(palletId);
+            if (palletMesh) focusCameraOn(palletMesh.position);
+        };
 
-            const cols = 3;
-            const spacingX = 5.5;
-            const spacingZ = 5.5;
+        window.focusBox = function(boxId) {
+            const boxMesh = boxMeshes.get(boxId);
+            if (boxMesh) focusCameraOn(boxMesh.position);
+        };
 
-            const targetX = ((pIndex % cols) - 1) * spacingX;
-            const targetZ = Math.floor(pIndex / cols) * spacingZ;
+        // ==========================================
+        // 7. DATA ACTIONS
+        // ==========================================
+        window.addPallet = async function() {
+            const newPallet = {
+                id: 'pallet_' + Date.now(),
+                name: `พาเลท ${pallets.length + 1}`,
+                index: pallets.length,
+                createdAt: new Date().toISOString()
+            };
 
-            gsap.to(camera.position, {
-                x: targetX,
-                y: 8,
-                z: targetZ + 12,
-                duration: 1,
-                ease: "power2.inOut"
-            });
-
-            gsap.to(controls.target, {
-                x: targetX,
-                y: 1.5,
-                z: targetZ,
-                duration: 1,
-                ease: "power2.inOut"
-            });
-        }
-
-        function focusBox(boxId, palletId) {
-            focusPallet(palletId);
-            const mesh = boxMeshMap.get(boxId);
-            if (mesh) {
-                gsap.to(mesh.scale, { x: 1.25, y: 1.25, z: 1.25, yoyo: true, repeat: 1, duration: 0.3 });
+            if (isFirebaseActive && db) {
+                await setDoc(doc(db, "pallets", newPallet.id), newPallet);
+            } else {
+                pallets.push(newPallet);
+                saveLocalStorage();
+                update3DScene();
             }
+        };
+
+        window.deletePallet = async function(palletId) {
+            if (!confirm('คุณต้องการลบพาเลทนี้พร้อมลังเอกสารทั้งหมดบนพาเลทหรือไม่?')) return;
+
+            if (isFirebaseActive && db) {
+                const batch = writeBatch(db);
+                batch.delete(doc(db, "pallets", palletId));
+                boxes.filter(b => b.palletId === palletId).forEach(b => {
+                    batch.delete(doc(db, "boxes", b.id));
+                });
+                await batch.commit();
+            } else {
+                pallets = pallets.filter(p => p.id !== palletId);
+                boxes = boxes.filter(b => b.palletId !== palletId);
+                saveLocalStorage();
+                update3DScene();
+            }
+        };
+
+        window.deleteBox = async function(boxId) {
+            if (isFirebaseActive && db) {
+                await deleteDoc(doc(db, "boxes", boxId));
+            } else {
+                boxes = boxes.filter(b => b.id !== boxId);
+                saveLocalStorage();
+                update3DScene();
+            }
+        };
+
+        // Modal triggers
+        document.getElementById('btn-add-box').addEventListener('click', () => {
+            if (pallets.length === 0) {
+                addPallet().then(() => showBoxModal());
+            } else {
+                showBoxModal();
+            }
+        });
+
+        document.getElementById('btn-add-pallet').addEventListener('click', addPallet);
+
+        function showBoxModal() {
+            document.getElementById('form-box').reset();
+            document.getElementById('modal-box').classList.remove('hidden');
         }
 
-        function exportJSON() {
-            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(palletsData, null, 2));
-            const a = document.createElement('a');
-            a.setAttribute("href", dataStr);
-            a.setAttribute("download", `pallet_backup_${new Date().toISOString().slice(0,10)}.json`);
-            document.body.appendChild(a);
-            a.click();
-            a.remove();
-        }
+        document.querySelectorAll('.btn-close-modal').forEach(b => {
+            b.addEventListener('click', () => document.getElementById('modal-box').classList.add('hidden'));
+        });
 
-        function importJSON(event) {
-            const file = event.target.files[0];
+        document.querySelectorAll('#color-picker-container button').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('#color-picker-container button').forEach(b => {
+                    b.classList.remove('ring-2', 'ring-indigo-500');
+                    b.classList.replace('border-white', 'border-transparent');
+                });
+                const color = btn.getAttribute('data-color');
+                btn.classList.add('ring-2', 'ring-indigo-500');
+                btn.classList.replace('border-transparent', 'border-white');
+                document.getElementById('input-box-color').value = color;
+            });
+        });
+
+        document.getElementById('form-box').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const label = document.getElementById('input-box-label').value.trim();
+            const palletId = document.getElementById('select-box-pallet').value;
+            const color = document.getElementById('input-box-color').value;
+            const notes = document.getElementById('input-box-notes').value.trim();
+
+            if (!label || !palletId) return;
+
+            const newBox = {
+                id: 'box_' + Date.now(),
+                label,
+                palletId,
+                color,
+                notes,
+                createdAt: new Date().toISOString()
+            };
+
+            if (isFirebaseActive && db) {
+                await setDoc(doc(db, "boxes", newBox.id), newBox);
+            } else {
+                boxes.push(newBox);
+                saveLocalStorage();
+                update3DScene();
+            }
+
+            document.getElementById('modal-box').classList.add('hidden');
+            setTimeout(() => focusBox(newBox.id), 200);
+        });
+
+        // Search Input Logic
+        const searchInput = document.getElementById('search-box');
+        const clearSearchBtn = document.getElementById('clear-search');
+
+        searchInput.addEventListener('input', (e) => {
+            activeSearchTerm = e.target.value.trim();
+            if (activeSearchTerm) clearSearchBtn.classList.remove('hidden');
+            else clearSearchBtn.classList.add('hidden');
+            update3DScene();
+        });
+
+        clearSearchBtn.addEventListener('click', () => {
+            searchInput.value = '';
+            activeSearchTerm = '';
+            clearSearchBtn.classList.add('hidden');
+            update3DScene();
+        });
+
+        // Backup Export / Import JSON
+        document.getElementById('btn-export').addEventListener('click', () => {
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify({ pallets, boxes }, null, 2));
+            const downloadAnchor = document.createElement('a');
+            downloadAnchor.setAttribute("href", dataStr);
+            downloadAnchor.setAttribute("download", `pallet_stacker_backup_${new Date().toISOString().slice(0,10)}.json`);
+            document.body.appendChild(downloadAnchor);
+            downloadAnchor.click();
+            downloadAnchor.remove();
+        });
+
+        document.getElementById('btn-import-trigger').addEventListener('click', () => {
+            document.getElementById('file-import').click();
+        });
+
+        document.getElementById('file-import').addEventListener('change', (e) => {
+            const file = e.target.files[0];
             if (!file) return;
 
             const reader = new FileReader();
-            reader.onload = function(e) {
+            reader.onload = async (event) => {
                 try {
-                    const importedData = JSON.parse(e.target.result);
-                    if (Array.isArray(importedData)) {
-                        palletsData = importedData;
-                        saveData();
-                        alert("นำเข้าข้อมูลสำเร็จเรียบร้อย!");
-                    } else {
-                        alert("รูปแบบไฟล์ JSON ไม่ถูกต้อง");
+                    const imported = JSON.parse(event.target.result);
+                    if (imported.pallets && imported.boxes) {
+                        if (isFirebaseActive && db) {
+                            const batch = writeBatch(db);
+                            imported.pallets.forEach(p => batch.set(doc(db, "pallets", p.id), p));
+                            imported.boxes.forEach(b => batch.set(doc(db, "boxes", b.id), b));
+                            await batch.commit();
+                        } else {
+                            pallets = imported.pallets;
+                            boxes = imported.boxes;
+                            saveLocalStorage();
+                            update3DScene();
+                        }
                     }
                 } catch (err) {
-                    alert("เกิดข้อผิดพลาดในการอ่านไฟล์ JSON");
+                    console.error('JSON Import Error', err);
                 }
             };
             reader.readAsText(file);
+        });
+
+        function saveLocalStorage() {
+            localStorage.setItem('pallet_app_pallets', JSON.stringify(pallets));
+            localStorage.setItem('pallet_app_boxes', JSON.stringify(boxes));
         }
 
-        function clearAllData() {
-            if (confirm("คุณแน่ใจหรือไม่ที่จะล้างข้อมูลพาเลทและกล่องทั้งหมด?")) {
-                palletsData = [];
-                saveData();
+        function loadLocalStorage() {
+            const localP = localStorage.getItem('pallet_app_pallets');
+            const localB = localStorage.getItem('pallet_app_boxes');
+
+            if (localP && localB) {
+                pallets = JSON.parse(localP);
+                boxes = JSON.parse(localB);
+            } else {
+                pallets = [
+                    { id: 'p1', name: 'พาเลท A (เอกสารทั่วไป)', index: 0 },
+                    { id: 'p2', name: 'พาเลท B (เอกสารการเงิน)', index: 1 }
+                ];
+                boxes = [
+                    { id: 'b1', label: 'BOX-2026-001', palletId: 'p1', color: '#c29b38' },
+                    { id: 'b2', label: 'BOX-2026-002', palletId: 'p1', color: '#c29b38' },
+                    { id: 'b3', label: 'BOX-2026-003', palletId: 'p1', color: '#c29b38' },
+                    { id: 'b4', label: 'BOX-2026-004', palletId: 'p1', color: '#c29b38' },
+                    { id: 'b5', label: 'BOX-2026-005 (ชั้น 2)', palletId: 'p1', color: '#3b82f6' },
+                    { id: 'b6', label: 'ACC-TAX-2025', palletId: 'p2', color: '#10b981' }
+                ];
+                saveLocalStorage();
+            }
+            update3DScene();
+        }
+
+        // ==========================================
+        // 8. FIREBASE FIRESTORE SYNC
+        // ==========================================
+        const firebaseModal = document.getElementById('modal-firebase');
+        document.getElementById('btn-toggle-firebase-modal').addEventListener('click', () => {
+            firebaseModal.classList.remove('hidden');
+        });
+        document.querySelectorAll('.btn-close-firebase').forEach(b => {
+            b.addEventListener('click', () => firebaseModal.classList.add('hidden'));
+        });
+
+        function initFirebase(config) {
+            try {
+                unsubscribeListeners.forEach(unsub => unsub());
+                unsubscribeListeners = [];
+
+                const app = initializeApp(config);
+                db = getFirestore(app);
+
+                const unsubP = onSnapshot(collection(db, "pallets"), (snapshot) => {
+                    pallets = snapshot.docs.map(doc => doc.data());
+                    update3DScene();
+                });
+
+                const unsubB = onSnapshot(collection(db, "boxes"), (snapshot) => {
+                    boxes = snapshot.docs.map(doc => doc.data());
+                    update3DScene();
+                });
+
+                unsubscribeListeners.push(unsubP, unsubB);
+
+                isFirebaseActive = true;
+                updateStatusIndicator(true, "Firebase Cloud Sync (Live)");
+                localStorage.setItem('pallet_app_firebase_config', JSON.stringify(config));
+            } catch (err) {
+                console.warn("Firebase fallback to LocalStorage:", err);
+                isFirebaseActive = false;
+                updateStatusIndicator(false, "Local Offline Mode");
+                loadLocalStorage();
             }
         }
 
-        document.addEventListener('DOMContentLoaded', () => {
-            init3D();
-            initFirebase();
+        document.getElementById('form-firebase').addEventListener('submit', (e) => {
+            e.preventDefault();
+            const configRaw = document.getElementById('input-firebase-config').value.trim();
+            try {
+                const config = JSON.parse(configRaw);
+                initFirebase(config);
+                firebaseModal.classList.add('hidden');
+            } catch (err) {
+                console.error("Invalid Firebase Config JSON");
+            }
+        });
 
-            document.getElementById('btn-add-pallet').addEventListener('click', addPallet);
-            document.getElementById('btn-add-box').addEventListener('click', addBox);
+        document.getElementById('btn-clear-firebase').addEventListener('click', () => {
+            localStorage.removeItem('pallet_app_firebase_config');
+            isFirebaseActive = false;
+            unsubscribeListeners.forEach(unsub => unsub());
+            unsubscribeListeners = [];
+            updateStatusIndicator(false, "Local Offline Mode");
+            firebaseModal.classList.add('hidden');
+            loadLocalStorage();
+        });
+
+        function updateStatusIndicator(isOnline, text) {
+            const dot = document.getElementById('status-dot');
+            const label = document.getElementById('status-text');
+
+            if (isOnline) {
+                dot.className = "w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse";
+                label.className = "text-emerald-400";
+                label.innerText = text;
+            } else {
+                dot.className = "w-2.5 h-2.5 rounded-full bg-amber-500";
+                label.className = "text-amber-400";
+                label.innerText = text;
+            }
+        }
+
+        // ==========================================
+        // 9. APP INITIALIZATION
+        // ==========================================
+        window.addEventListener('load', () => {
+            initThreeScene();
+
+            const savedFirebaseConfig = localStorage.getItem('pallet_app_firebase_config');
+            const configToUse = savedFirebaseConfig ? JSON.parse(savedFirebaseConfig) : DEFAULT_FIREBASE_CONFIG;
             
-            const searchInput = document.getElementById('search-input');
-            const searchClear = document.getElementById('search-clear');
-
-            searchInput.addEventListener('input', handleSearch);
-            searchClear.addEventListener('click', () => {
-                searchInput.value = '';
-                handleSearch();
-            });
-
-            document.getElementById('input-box-label').addEventListener('keypress', (e) => {
-                if (e.key === 'Enter') addBox();
-            });
-
-            document.getElementById('btn-export').addEventListener('click', exportJSON);
-            document.getElementById('btn-import-trigger').addEventListener('click', () => {
-                document.getElementById('file-import').click();
-            });
-            document.getElementById('file-import').addEventListener('change', importJSON);
-            document.getElementById('btn-clear-all').addEventListener('click', clearAllData);
-
-            renderIcons();
+            document.getElementById('input-firebase-config').value = JSON.stringify(configToUse, null, 2);
+            initFirebase(configToUse);
         });
     </script>
 </body>
