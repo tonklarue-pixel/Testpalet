@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>3D Pallet & File Box Manager (Lag-Free Engine)</title>
+    <title>3D Pallet Custom Slot & Layer Stacking Manager</title>
     
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -11,7 +11,7 @@
     <!-- Lucide Icons -->
     <script src="https://unpkg.com/lucide@latest"></script>
     
-    <!-- Three.js, OrbitControls, and GSAP -->
+    <!-- Three.js & OrbitControls -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
@@ -74,21 +74,11 @@
                     <h1 class="font-bold text-lg leading-tight bg-gradient-to-r from-indigo-300 via-cyan-300 to-emerald-300 bg-clip-text text-transparent">
                         ระบบจัดเรียงกล่อง 3D
                     </h1>
-                    <p class="text-xs text-slate-400">Ultra-Smooth & No-Lag Engine</p>
+                    <p class="text-xs text-slate-400">เลือกช่องวาง 1-4 ได้อิสระ + ซ้อนชั้นไม่จำกัด</p>
                 </div>
             </div>
 
             <div class="flex items-center gap-3">
-                <!-- Mode Switcher (Fixes Freezing/Lag) -->
-                <div class="glass-panel p-1 rounded-xl flex items-center gap-1 shadow-lg">
-                    <button id="btn-mode-rotate" class="px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition bg-indigo-600 text-white">
-                        <i data-lucide="rotate-3d" class="w-3.5 h-3.5"></i> หมุนกล้อง
-                    </button>
-                    <button id="btn-mode-drag" class="px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition text-slate-400 hover:text-white">
-                        <i data-lucide="move" class="w-3.5 h-3.5"></i> ลากย้ายกล่อง
-                    </button>
-                </div>
-
                 <div id="status-badge" class="glass-panel px-4 py-2 rounded-xl flex items-center gap-2 text-xs font-semibold shadow-lg">
                     <span class="w-2.5 h-2.5 rounded-full bg-amber-500 animate-ping"></span>
                     <span class="text-amber-400">กำลังเชื่อมต่อ...</span>
@@ -142,10 +132,21 @@
                         </select>
                     </div>
 
-                    <div class="flex flex-col gap-1.5">
-                        <label class="text-xs text-slate-400">ชื่อข้างกล่อง / รหัสเอกสาร</label>
-                        <input type="text" id="input-box-label" placeholder="ตัวอย่าง: แฟ้มบัญชี 2567/01" 
-                            class="bg-slate-900/80 border border-slate-700 rounded-xl px-3.5 py-2 text-sm text-white focus:outline-none focus:border-indigo-500 transition">
+                    <div class="grid grid-cols-2 gap-2">
+                        <div class="flex flex-col gap-1.5">
+                            <label class="text-xs text-slate-400">เลือกตำแหน่งวาง (Slot)</label>
+                            <select id="select-slot" class="bg-slate-900/80 border border-slate-700 rounded-xl px-3 py-2 text-sm text-amber-300 focus:outline-none focus:border-indigo-500 transition font-medium">
+                                <option value="0">ช่อง 1 (ซ้ายบน)</option>
+                                <option value="1">ช่อง 2 (ขวาบน)</option>
+                                <option value="2">ช่อง 3 (ซ้ายล่าง)</option>
+                                <option value="3">ช่อง 4 (ขวาล่าง)</option>
+                            </select>
+                        </div>
+                        <div class="flex flex-col gap-1.5">
+                            <label class="text-xs text-slate-400">ชื่อข้างกล่อง / รหัสเอกสาร</label>
+                            <input type="text" id="input-box-label" placeholder="แฟ้ม 2567/01" 
+                                class="bg-slate-900/80 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-indigo-500 transition">
+                        </div>
                     </div>
 
                     <div class="grid grid-cols-2 gap-2 pt-1">
@@ -156,6 +157,14 @@
                             <i data-lucide="layer-plus" class="w-4 h-4 text-cyan-400"></i> เพิ่มพาเลท
                         </button>
                     </div>
+                </div>
+
+                <div class="text-[11px] text-slate-400 bg-slate-900/40 p-3 rounded-xl border border-slate-800/80 flex flex-col gap-1">
+                    <div class="font-medium text-amber-300 flex items-center gap-1">
+                        <i data-lucide="grid" class="w-3.5 h-3.5"></i> ตารางวางกล่องแบบ 2x2:
+                    </div>
+                    <div>• สามารถเลือกวางกล่องในช่อง 1, 2, 3 หรือ 4 ได้โดยตรง</div>
+                    <div>• หากวางซ้ำช่องเดิม กล่องจะซ้อนทับขึ้นชั้นใหม่ให้อัตโนมัติ</div>
                 </div>
 
             </div>
@@ -201,18 +210,9 @@
         let palletsData = [];
         let highlightedBoxIds = new Set();
 
-        let scene, camera, renderer, controls, raycaster, mouse;
+        let scene, camera, renderer, controls;
         let pallet3DGroup = new THREE.Group();
         let boxMeshMap = new Map();
-
-        // Mode Management (Prevents lag/freeze)
-        let currentMode = 'rotate'; // 'rotate' or 'drag'
-        let isDragging = false;
-        let draggedMesh = null;
-        let dragPlane = new THREE.Plane();
-        let planeIntersect = new THREE.Vector3();
-        let dragOffset = new THREE.Vector3();
-        let originalBoxPosition = new THREE.Vector3();
 
         const PALLET_WIDTH = 3.6;
         const PALLET_LENGTH = 3.6;
@@ -225,11 +225,12 @@
         const SPACING_X = 5.5;
         const SPACING_Z = 5.5;
 
+        // 2x2 Grid Offsets
         const LOCAL_SLOT_OFFSETS = [
-            { x: -(BOX_WIDTH / 2 + BOX_GAP / 2), z: -(BOX_LENGTH / 2 + BOX_GAP / 2) },
-            { x:  (BOX_WIDTH / 2 + BOX_GAP / 2), z: -(BOX_LENGTH / 2 + BOX_GAP / 2) },
-            { x: -(BOX_WIDTH / 2 + BOX_GAP / 2), z:  (BOX_LENGTH / 2 + BOX_GAP / 2) },
-            { x:  (BOX_WIDTH / 2 + BOX_GAP / 2), z:  (BOX_LENGTH / 2 + BOX_GAP / 2) }
+            { x: -(BOX_WIDTH / 2 + BOX_GAP / 2), z: -(BOX_LENGTH / 2 + BOX_GAP / 2) }, // Slot 0: Top-Left (ช่อง 1)
+            { x:  (BOX_WIDTH / 2 + BOX_GAP / 2), z: -(BOX_LENGTH / 2 + BOX_GAP / 2) }, // Slot 1: Top-Right (ช่อง 2)
+            { x: -(BOX_WIDTH / 2 + BOX_GAP / 2), z:  (BOX_LENGTH / 2 + BOX_GAP / 2) }, // Slot 2: Bottom-Left (ช่อง 3)
+            { x:  (BOX_WIDTH / 2 + BOX_GAP / 2), z:  (BOX_LENGTH / 2 + BOX_GAP / 2) }  // Slot 3: Bottom-Right (ช่อง 4)
         ];
 
         const LAYER_COLORS = [
@@ -328,7 +329,7 @@
             camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
             camera.position.set(0, 18, 26);
 
-            renderer = new THREE.WebGLRenderer({ antialias: false, powerPreference: "high-performance" });
+            renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
             renderer.setSize(window.innerWidth, window.innerHeight);
             renderer.setPixelRatio(1);
             container.appendChild(renderer.domElement);
@@ -337,9 +338,6 @@
             controls.enableDamping = true;
             controls.dampingFactor = 0.08;
             controls.maxPolarAngle = Math.PI / 2 - 0.05;
-
-            raycaster = new THREE.Raycaster();
-            mouse = new THREE.Vector2();
 
             const ambientLight = new THREE.AmbientLight(0xffffff, 0.9);
             scene.add(ambientLight);
@@ -350,12 +348,7 @@
 
             scene.add(pallet3DGroup);
 
-            const dom = renderer.domElement;
-            dom.addEventListener('pointerdown', onPointerDown);
-            dom.addEventListener('pointermove', onPointerMove);
-            dom.addEventListener('pointerup', onPointerUp);
             window.addEventListener('resize', onWindowResize);
-
             animate();
         }
 
@@ -382,15 +375,19 @@
                 palletMesh.position.set(posX, PALLET_HEIGHT / 2, posZ);
                 pallet3DGroup.add(palletMesh);
 
-                (pallet.boxes || []).forEach((box, bIndex) => {
-                    const layerIndex = Math.floor(bIndex / 4);
-                    const slotIndex = bIndex % 4;
+                // Track stack height for each slot (0, 1, 2, 3)
+                const slotHeights = [0, 0, 0, 0];
 
-                    const boxX = posX + LOCAL_SLOT_OFFSETS[slotIndex].x;
-                    const boxY = PALLET_HEIGHT + (layerIndex * BOX_HEIGHT) + (BOX_HEIGHT / 2);
-                    const boxZ = posZ + LOCAL_SLOT_OFFSETS[slotIndex].z;
+                (pallet.boxes || []).forEach((box) => {
+                    const slotIdx = box.slot !== undefined ? box.slot : 0;
+                    const layerIdx = slotHeights[slotIdx];
+                    slotHeights[slotIdx]++; // Increment stack level for this specific slot
 
-                    const colorHex = LAYER_COLORS[layerIndex % LAYER_COLORS.length];
+                    const boxX = posX + LOCAL_SLOT_OFFSETS[slotIdx].x;
+                    const boxY = PALLET_HEIGHT + (layerIdx * BOX_HEIGHT) + (BOX_HEIGHT / 2);
+                    const boxZ = posZ + LOCAL_SLOT_OFFSETS[slotIdx].z;
+
+                    const colorHex = LAYER_COLORS[layerIdx % LAYER_COLORS.length];
                     const boxMesh = createBoxMesh(BOX_WIDTH, BOX_HEIGHT, BOX_LENGTH, colorHex);
                     
                     boxMesh.position.set(boxX, boxY, boxZ);
@@ -398,8 +395,7 @@
                         boxId: box.id, 
                         palletId: pallet.id, 
                         label: box.label,
-                        originalColor: colorHex,
-                        isBox: true
+                        originalColor: colorHex
                     };
 
                     pallet3DGroup.add(boxMesh);
@@ -448,109 +444,9 @@
             return mesh;
         }
 
-        // Extremely Lightweight Drag Event Logic
-        function onPointerDown(event) {
-            if (currentMode !== 'drag' || event.button !== 0) return;
-
-            mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
-            mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
-
-            raycaster.setFromCamera(mouse, camera);
-            const intersects = raycaster.intersectObjects(pallet3DGroup.children, true);
-
-            if (intersects.length > 0) {
-                let obj = intersects[0].object;
-                while (obj && !obj.userData.isBox && obj.parent && obj !== pallet3DGroup) {
-                    obj = obj.parent;
-                }
-
-                if (obj && obj.userData.isBox) {
-                    isDragging = true;
-                    draggedMesh = obj;
-
-                    originalBoxPosition.copy(draggedMesh.position);
-                    dragPlane.setFromNormalAndCoplanarPoint(new THREE.Vector3(0, 1, 0), draggedMesh.position);
-
-                    if (raycaster.ray.intersectPlane(dragPlane, planeIntersect)) {
-                        dragOffset.subVectors(draggedMesh.position, planeIntersect);
-                    }
-
-                    draggedMesh.position.y += 0.5;
-                }
-            }
-        }
-
-        function onPointerMove(event) {
-            if (!isDragging || !draggedMesh) return;
-
-            mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
-            mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
-
-            raycaster.setFromCamera(mouse, camera);
-
-            if (raycaster.ray.intersectPlane(dragPlane, planeIntersect)) {
-                draggedMesh.position.x = planeIntersect.x + dragOffset.x;
-                draggedMesh.position.z = planeIntersect.z + dragOffset.z;
-            }
-        }
-
-        function onPointerUp() {
-            if (!isDragging || !draggedMesh) return;
-
-            isDragging = false;
-
-            let closestPallet = null;
-            let minDistance = Infinity;
-
-            palletsData.forEach((pallet, pIndex) => {
-                const col = pIndex % GRID_COLS;
-                const row = Math.floor(pIndex / GRID_COLS);
-                const posX = (col - 1) * SPACING_X;
-                const posZ = row * SPACING_Z;
-
-                const distance = Math.hypot(draggedMesh.position.x - posX, draggedMesh.position.z - posZ);
-                if (distance < minDistance) {
-                    minDistance = distance;
-                    closestPallet = pallet;
-                }
-            });
-
-            if (closestPallet && minDistance < 3.2) {
-                transferBoxToPallet(draggedMesh.userData.palletId, closestPallet.id, draggedMesh.userData.boxId);
-            } else {
-                draggedMesh.position.copy(originalBoxPosition);
-            }
-
-            draggedMesh = null;
-        }
-
-        function transferBoxToPallet(fromPalletId, toPalletId, boxId) {
-            let movedBox = null;
-
-            const sourcePallet = palletsData.find(p => p.id === fromPalletId);
-            if (sourcePallet && sourcePallet.boxes) {
-                sourcePallet.boxes = sourcePallet.boxes.filter(b => {
-                    if (b.id === boxId) {
-                        movedBox = b;
-                        return false;
-                    }
-                    return true;
-                });
-            }
-
-            const targetPallet = palletsData.find(p => p.id === toPalletId);
-            if (targetPallet && movedBox) {
-                if (!targetPallet.boxes) targetPallet.boxes = [];
-                targetPallet.boxes.push(movedBox);
-                saveData();
-            }
-        }
-
         function animate() {
             requestAnimationFrame(animate);
-            if (controls && currentMode === 'rotate') {
-                controls.update();
-            }
+            if (controls) controls.update();
 
             if (renderer && scene && camera) {
                 renderer.render(scene, camera);
@@ -591,23 +487,22 @@
                 card.className = "bg-slate-900/90 border border-slate-700/80 rounded-xl p-3 flex flex-col gap-2.5 hover:border-slate-500 transition shadow-md";
 
                 const boxCount = pallet.boxes ? pallet.boxes.length : 0;
-                const layerCount = Math.ceil(boxCount / 4);
 
                 let boxesHTML = '';
                 if (boxCount === 0) {
                     boxesHTML = `<p class="text-xs text-slate-500 italic py-1">ไม่มีลังบนพาเลทนี้</p>`;
                 } else {
-                    boxesHTML = pallet.boxes.map((b, idx) => {
-                        const layer = Math.floor(idx / 4) + 1;
+                    boxesHTML = pallet.boxes.map((b) => {
+                        const slotName = (b.slot !== undefined ? (b.slot + 1) : 1);
                         return `
                             <div class="flex justify-between items-center text-xs bg-slate-800/80 px-2.5 py-1.5 rounded-lg border border-slate-700/50">
                                 <div class="flex items-center gap-1.5 truncate mr-1">
-                                    <span class="w-2 h-2 rounded-full" style="background-color: #${LAYER_COLORS[(layer-1)%LAYER_COLORS.length].toString(16)}"></span>
+                                    <span class="w-2 h-2 rounded-full bg-cyan-400"></span>
                                     <span class="text-slate-200 truncate" title="${b.label}">${b.label}</span>
                                 </div>
                                 <div class="flex items-center gap-1.5 shrink-0">
-                                    <span class="text-[10px] text-slate-400 bg-slate-900 px-1.5 py-0.5 rounded">ชั้น ${layer}</span>
-                                    <button onclick="moveBoxPrompt('${pallet.id}', '${b.id}')" title="เลือกย้ายพาเลท" class="text-cyan-400 hover:text-cyan-300 transition">🔄</button>
+                                    <span class="text-[10px] text-amber-300 bg-slate-900 px-1.5 py-0.5 rounded border border-slate-700">ช่อง ${slotName}</span>
+                                    <button onclick="moveBoxPrompt('${pallet.id}', '${b.id}')" title="ย้ายพาเลท/ช่อง" class="text-cyan-400 hover:text-cyan-300 transition">🔄</button>
                                     <button onclick="removeBox('${pallet.id}', '${b.id}')" title="ลบกล่อง" class="text-rose-400 hover:text-rose-300 transition">✖</button>
                                 </div>
                             </div>
@@ -619,7 +514,7 @@
                     <div class="flex justify-between items-center border-b border-slate-800 pb-2">
                         <div>
                             <h3 class="text-xs font-bold text-cyan-300">${pallet.name}</h3>
-                            <p class="text-[10px] text-slate-400">${boxCount} ลัง (${layerCount} ชั้น)</p>
+                            <p class="text-[10px] text-slate-400">${boxCount} ลัง</p>
                         </div>
                         <div class="flex items-center gap-1">
                             <button onclick="focusPallet('${pallet.id}')" title="ซูมกล้องไปที่พาเลทนี้" class="p-1 text-slate-400 hover:text-cyan-400 transition">👁️</button>
@@ -653,9 +548,11 @@
 
         function addBox() {
             const selectPallet = document.getElementById('select-pallet');
+            const selectSlot = document.getElementById('select-slot');
             const inputLabel = document.getElementById('input-box-label');
             
             const palletId = selectPallet.value;
+            const slotIdx = parseInt(selectSlot.value, 10);
             const label = inputLabel.value.trim();
 
             if (!palletId || selectPallet.options[0].text.includes('--')) {
@@ -671,7 +568,11 @@
             const pallet = palletsData.find(p => p.id === palletId);
             if (pallet) {
                 if (!pallet.boxes) pallet.boxes = [];
-                pallet.boxes.push({ id: 'B_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4), label: label });
+                pallet.boxes.push({ 
+                    id: 'B_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4), 
+                    label: label,
+                    slot: slotIdx 
+                });
                 inputLabel.value = '';
                 saveData();
             }
@@ -695,7 +596,27 @@
                 return;
             }
 
-            transferBoxToPallet(fromPalletId, targetPallet.id, boxId);
+            const newSlot = prompt("เลือกช่องวางเป้าหมายบนพาเลทใหม่ (กรอกเลข 1, 2, 3 หรือ 4):", "1");
+            const slotVal = Math.max(0, Math.min(3, parseInt(newSlot, 10) - 1 || 0));
+
+            let movedBox = null;
+            const sourcePallet = palletsData.find(p => p.id === fromPalletId);
+            if (sourcePallet && sourcePallet.boxes) {
+                sourcePallet.boxes = sourcePallet.boxes.filter(b => {
+                    if (b.id === boxId) {
+                        movedBox = b;
+                        return false;
+                    }
+                    return true;
+                });
+            }
+
+            if (movedBox) {
+                movedBox.slot = slotVal;
+                if (!targetPallet.boxes) targetPallet.boxes = [];
+                targetPallet.boxes.push(movedBox);
+                saveData();
+            }
         }
 
         function handleSearch() {
@@ -715,19 +636,18 @@
 
                 let matchCount = 0;
                 palletsData.forEach(pallet => {
-                    (pallet.boxes || []).forEach((box, idx) => {
+                    (pallet.boxes || []).forEach((box) => {
                         if (box.label.toLowerCase().includes(query)) {
                             highlightedBoxIds.add(box.id);
                             matchCount++;
 
-                            const layer = Math.floor(idx / 4) + 1;
                             const item = document.createElement('div');
                             item.className = "flex justify-between items-center bg-slate-800/90 hover:bg-slate-700 px-3 py-1.5 rounded-lg border border-slate-600 text-xs cursor-pointer transition";
                             item.onclick = () => focusBox(box.id, pallet.id);
                             item.innerHTML = `
                                 <div class="truncate mr-2">
                                     <span class="font-medium text-amber-300">${box.label}</span>
-                                    <span class="text-[10px] text-slate-400 block">${pallet.name} • ชั้น ${layer}</span>
+                                    <span class="text-[10px] text-slate-400 block">${pallet.name} • ช่อง ${box.slot + 1}</span>
                                 </div>
                                 <span class="text-cyan-400">🎯</span>
                             `;
@@ -817,29 +737,9 @@
             }
         }
 
-        // Mode Switching Handlers (Solves Freeze Issue)
-        function setMode(mode) {
-            currentMode = mode;
-            const btnRotate = document.getElementById('btn-mode-rotate');
-            const btnDrag = document.getElementById('btn-mode-drag');
-
-            if (mode === 'rotate') {
-                controls.enabled = true;
-                btnRotate.className = "px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition bg-indigo-600 text-white";
-                btnDrag.className = "px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition text-slate-400 hover:text-white";
-            } else {
-                controls.enabled = false;
-                btnDrag.className = "px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition bg-indigo-600 text-white";
-                btnRotate.className = "px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition text-slate-400 hover:text-white";
-            }
-        }
-
         document.addEventListener('DOMContentLoaded', () => {
             init3D();
             initFirebase();
-
-            document.getElementById('btn-mode-rotate').addEventListener('click', () => setMode('rotate'));
-            document.getElementById('btn-mode-drag').addEventListener('click', () => setMode('drag'));
 
             document.getElementById('btn-add-pallet').addEventListener('click', addPallet);
             document.getElementById('btn-add-box').addEventListener('click', addBox);
