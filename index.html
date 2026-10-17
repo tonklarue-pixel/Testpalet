@@ -2,8 +2,8 @@
 <html lang="th">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>3D Pallet & Grid Coordinate System (Warehouse Pro)</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>3D Warehouse Management (Clean UI Edition)</title>
     
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -21,39 +21,33 @@
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600&display=swap');
+        * { touch-action: manipulation; box-sizing: border-box; }
         body {
             font-family: 'Prompt', sans-serif;
-            margin: 0;
-            padding: 0;
+            margin: 0; padding: 0;
             overflow: hidden;
-            background-color: #0b1120;
-            color: #f8fafc;
+            background-color: #070d1b;
+            color: #f1f5f9;
             user-select: none;
+            -webkit-user-select: none;
         }
         #canvas-container {
-            width: 100vw;
-            height: 100vh;
-            position: absolute;
-            top: 0;
-            left: 0;
-            z-index: 1;
+            width: 100vw; height: 100vh;
+            position: absolute; top: 0; left: 0; z-index: 1;
+            touch-action: none;
         }
-        .glass-panel {
-            background: rgba(15, 23, 42, 0.88);
-            backdrop-filter: blur(12px);
-            border: 1px solid rgba(255, 255, 255, 0.1);
+        .clean-glass {
+            background: rgba(11, 19, 38, 0.75);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
         }
-        .custom-scrollbar::-webkit-scrollbar {
-            width: 6px;
-        }
-        .custom-scrollbar::-webkit-scrollbar-track {
-            background: rgba(15, 23, 42, 0.6);
-        }
-        .custom-scrollbar::-webkit-scrollbar-thumb {
-            background: rgba(51, 65, 85, 0.8);
-            border-radius: 3px;
-        }
+        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.15); border-radius: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.3); }
     </style>
 </head>
 <body class="relative min-h-screen">
@@ -61,144 +55,127 @@
     <!-- 3D Canvas Container -->
     <div id="canvas-container"></div>
 
-    <!-- Dragging Instruction Toast -->
+    <!-- Toast Notification -->
     <div id="drag-toast" class="fixed top-20 left-1/2 -translate-x-1/2 z-50 pointer-events-none transition-all duration-300 opacity-0 transform -translate-y-2">
-        <div class="bg-indigo-600/90 backdrop-blur-md text-white text-xs font-semibold px-4 py-2 rounded-full shadow-2xl flex items-center gap-2 border border-indigo-400/40">
-            <span class="w-2 h-2 rounded-full bg-cyan-400 animate-ping"></span>
+        <div class="clean-glass text-white text-xs font-medium px-4 py-2 rounded-full shadow-2xl flex items-center gap-2 border border-indigo-500/30">
+            <span class="w-2 h-2 rounded-full bg-cyan-400 animate-pulse"></span>
             <span id="drag-toast-text">กำลังย้ายกล่อง...</span>
         </div>
     </div>
 
     <!-- UI Overlay Layer -->
-    <div class="relative z-10 p-4 md:p-6 pointer-events-none flex flex-col justify-between h-screen max-w-full">
+    <div class="relative z-10 p-3 md:p-5 pointer-events-none flex flex-col justify-between h-screen max-w-full">
         
-        <!-- Header & Control Bar -->
-        <div class="flex flex-wrap justify-between items-center gap-4 pointer-events-auto">
-            <div class="glass-panel px-5 py-3 rounded-2xl flex items-center gap-3 shadow-2xl">
-                <div class="p-2 bg-indigo-600 rounded-xl">
-                    <i data-lucide="map-pin" class="w-6 h-6 text-white"></i>
+        <!-- Header -->
+        <div class="flex flex-wrap justify-between items-center gap-3 pointer-events-auto">
+            <div class="clean-glass px-4 py-2.5 rounded-2xl flex items-center gap-3">
+                <div class="p-2 bg-gradient-to-tr from-indigo-600 to-violet-600 rounded-xl shadow-md">
+                    <i data-lucide="box" class="w-5 h-5 text-white"></i>
                 </div>
                 <div>
-                    <h1 class="font-bold text-lg leading-tight bg-gradient-to-r from-indigo-300 via-cyan-300 to-emerald-300 bg-clip-text text-transparent">
-                        ระบบคลังสินค้า 3D (ระบบพิกัดช่องคงที่)
-                    </h1>
-                    <p class="text-xs text-slate-400">พิกัดอัตโนมัติ Pallet - Slot - Layer • ลื่นไหล 60FPS</p>
+                    <h1 class="font-semibold text-sm leading-tight text-white">ระบบคลังสินค้า 3D</h1>
+                    <p class="text-[11px] text-slate-400">พิกัดอัตโนมัติ Pallet-Slot-Layer</p>
                 </div>
             </div>
 
-            <div class="flex items-center gap-3">
+            <div class="flex items-center gap-2">
                 <!-- Mode Switcher -->
-                <div class="glass-panel p-1 rounded-xl flex items-center gap-1 shadow-lg">
-                    <button id="btn-mode-rotate" class="px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition bg-indigo-600 text-white">
+                <div class="clean-glass p-1 rounded-2xl flex items-center gap-1">
+                    <button id="btn-mode-rotate" class="px-3 py-1.5 rounded-xl text-xs font-medium flex items-center gap-1.5 transition bg-indigo-600 text-white shadow">
                         <i data-lucide="rotate-3d" class="w-3.5 h-3.5"></i> หมุนกล้อง
                     </button>
-                    <button id="btn-mode-drag" class="px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition text-slate-400 hover:text-white">
-                        <i data-lucide="move" class="w-3.5 h-3.5"></i> ลากย้ายกล่อง
+                    <button id="btn-mode-drag" class="px-3 py-1.5 rounded-xl text-xs font-medium flex items-center gap-1.5 transition text-slate-400 hover:text-white">
+                        <i data-lucide="move" class="w-3.5 h-3.5"></i> ลากย้าย
                     </button>
                 </div>
 
-                <div id="status-badge" class="glass-panel px-4 py-2 rounded-xl flex items-center gap-2 text-xs font-semibold shadow-lg">
-                    <span class="w-2.5 h-2.5 rounded-full bg-amber-500 animate-ping"></span>
-                    <span class="text-amber-400">กำลังเชื่อมต่อ...</span>
-                </div>
-
-                <div class="glass-panel p-1.5 rounded-xl flex items-center gap-1 shadow-lg">
-                    <button id="btn-export" title="ส่งออก JSON" class="p-2 hover:bg-slate-700/60 rounded-lg text-slate-300 hover:text-white transition">
-                        <i data-lucide="download" class="w-4 h-4"></i>
-                    </button>
-                    <button id="btn-import-trigger" title="นำเข้า JSON" class="p-2 hover:bg-slate-700/60 rounded-lg text-slate-300 hover:text-white transition">
-                        <i data-lucide="upload" class="w-4 h-4"></i>
-                    </button>
-                    <input type="file" id="file-import" accept=".json" class="hidden">
-                    <button id="btn-clear-all" title="ล้างข้อมูลทั้งหมด" class="p-2 hover:bg-rose-900/40 text-rose-400 hover:text-rose-300 rounded-lg transition">
-                        <i data-lucide="trash-2" class="w-4 h-4"></i>
-                    </button>
+                <div id="status-badge" class="clean-glass px-3 py-2 rounded-2xl hidden sm:flex items-center gap-2 text-xs font-medium">
+                    <span class="w-2 h-2 rounded-full bg-amber-400 animate-pulse"></span>
+                    <span class="text-slate-300 text-[11px]">เชื่อมต่อระบบ...</span>
                 </div>
             </div>
         </div>
 
-        <!-- Sidebar / Bottom Controls -->
-        <div class="grid grid-cols-1 md:grid-cols-12 gap-4 pointer-events-auto items-end pb-2">
+        <!-- Main Controls & Panel -->
+        <div class="grid grid-cols-1 md:grid-cols-12 gap-3 pointer-events-auto items-end pb-1">
             
-            <!-- Left Control Panel -->
-            <div class="md:col-span-5 lg:col-span-4 glass-panel p-5 rounded-2xl shadow-2xl flex flex-col gap-4 max-h-[80vh] overflow-y-auto custom-scrollbar">
+            <!-- Left Panel: Form & Search -->
+            <div class="md:col-span-5 lg:col-span-4 clean-glass p-4 rounded-3xl flex flex-col gap-3.5 max-h-[45vh] md:max-h-[75vh] overflow-y-auto custom-scrollbar">
                 
-                <!-- Search Box -->
-                <div class="flex flex-col gap-2 border-b border-slate-700/60 pb-4">
-                    <label class="text-xs font-semibold text-cyan-400 flex items-center gap-1.5">
-                        <i data-lucide="search" class="w-3.5 h-3.5"></i> ค้นหาชื่อกล่องหรือรหัสพิกัด
-                    </label>
+                <!-- Search Input -->
+                <div class="flex flex-col gap-1.5">
                     <div class="relative">
-                        <input type="text" id="search-input" placeholder="พิมพ์ชื่อแฟ้มหรือรหัสพิกัด..." 
-                            class="w-full bg-slate-900/80 border border-slate-700 rounded-xl px-3.5 py-2 text-sm text-white focus:outline-none focus:border-cyan-500 pr-8 transition">
-                        <button id="search-clear" class="absolute right-2.5 top-2.5 text-slate-400 hover:text-white hidden">
-                            <i data-lucide="x" class="w-4 h-4"></i>
+                        <input type="text" id="search-input" placeholder="ค้นหาชื่อแฟ้ม หรือรหัสพิกัด (เช่น P1-S1)..." 
+                            class="w-full bg-slate-900/60 border border-slate-700/60 rounded-2xl px-3.5 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 pr-8 transition">
+                        <button id="search-clear" class="absolute right-3 top-2.5 text-slate-400 hover:text-white hidden">
+                            <i data-lucide="x" class="w-3.5 h-3.5"></i>
                         </button>
                     </div>
-                    <div id="search-results-list" class="flex flex-col gap-1.5 mt-1 max-h-32 overflow-y-auto custom-scrollbar hidden"></div>
+                    <div id="search-results-list" class="flex flex-col gap-1 max-h-24 overflow-y-auto custom-scrollbar hidden"></div>
                 </div>
 
-                <!-- Add Box Form -->
-                <div class="flex flex-col gap-3">
-                    <h2 class="text-sm font-semibold text-slate-200 flex items-center gap-2">
-                        <i data-lucide="box" class="w-4 h-4 text-indigo-400"></i> เพิ่มลังแฟ้มลงพิกัดคลัง
+                <!-- Add Form -->
+                <div class="flex flex-col gap-2.5 pt-1 border-t border-slate-800/80">
+                    <h2 class="text-xs font-medium text-slate-300 flex items-center gap-1.5">
+                        <i data-lucide="plus-circle" class="w-3.5 h-3.5 text-indigo-400"></i> เพิ่มกล่องเข้าคลัง
                     </h2>
                     
-                    <div class="flex flex-col gap-1.5">
-                        <label class="text-xs text-slate-400">เลือกพาเลทเป้าหมาย</label>
-                        <select id="select-pallet" class="bg-slate-900/80 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-indigo-500 transition">
+                    <div class="flex flex-col gap-1">
+                        <label class="text-[10px] text-slate-400">เลือกพาเลท</label>
+                        <select id="select-pallet" class="bg-slate-900/60 border border-slate-700/60 rounded-2xl px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500 transition">
                         </select>
                     </div>
 
                     <div class="grid grid-cols-2 gap-2">
-                        <div class="flex flex-col gap-1.5">
-                            <label class="text-xs text-slate-400">เลือกช่องบนพาเลท (Slot)</label>
-                            <select id="select-slot" class="bg-slate-900/80 border border-slate-700 rounded-xl px-3 py-2 text-sm text-amber-300 focus:outline-none focus:border-indigo-500 transition font-medium">
+                        <div class="flex flex-col gap-1">
+                            <label class="text-[10px] text-slate-400">ตำแหน่ง (Slot)</label>
+                            <select id="select-slot" class="bg-slate-900/60 border border-slate-700/60 rounded-2xl px-3 py-2 text-xs text-amber-300 font-medium focus:outline-none focus:border-indigo-500 transition">
                                 <option value="0">ช่อง 1 (ซ้ายบน)</option>
                                 <option value="1">ช่อง 2 (ขวาบน)</option>
                                 <option value="2">ช่อง 3 (ซ้ายล่าง)</option>
                                 <option value="3">ช่อง 4 (ขวาล่าง)</option>
                             </select>
                         </div>
-                        <div class="flex flex-col gap-1.5">
-                            <label class="text-xs text-slate-400">ชื่อข้างกล่อง / รหัสเอกสาร</label>
-                            <input type="text" id="input-box-label" placeholder="แฟ้มบัญชี 2567" 
-                                class="bg-slate-900/80 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-indigo-500 transition">
+                        <div class="flex flex-col gap-1">
+                            <label class="text-[10px] text-slate-400">ชื่อข้างกล่อง</label>
+                            <input type="text" id="input-box-label" placeholder="แฟ้มบัญชี 67" 
+                                class="bg-slate-900/60 border border-slate-700/60 rounded-2xl px-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 transition">
                         </div>
                     </div>
 
                     <div class="grid grid-cols-2 gap-2 pt-1">
-                        <button id="btn-add-box" class="bg-indigo-600 hover:bg-indigo-500 active:scale-95 text-white text-sm font-medium py-2.5 px-4 rounded-xl flex items-center justify-center gap-2 transition shadow-lg shadow-indigo-600/30">
-                            <i data-lucide="plus" class="w-4 h-4"></i> เพิ่มกล่อง
+                        <button id="btn-add-box" class="bg-indigo-600 hover:bg-indigo-500 active:scale-95 text-white text-xs font-medium py-2 px-3 rounded-2xl flex items-center justify-center gap-1.5 transition shadow-lg shadow-indigo-600/20">
+                            <i data-lucide="plus" class="w-3.5 h-3.5"></i> เพิ่มกล่อง
                         </button>
-                        <button id="btn-add-pallet" class="bg-slate-800 hover:bg-slate-700 text-slate-200 text-sm font-medium py-2.5 px-4 rounded-xl border border-slate-700 flex items-center justify-center gap-2 transition">
-                            <i data-lucide="layer-plus" class="w-4 h-4 text-cyan-400"></i> เพิ่มพาเลท
+                        <button id="btn-add-pallet" class="bg-slate-800/80 hover:bg-slate-700 text-slate-200 text-xs font-medium py-2 px-3 rounded-2xl border border-slate-700/60 flex items-center justify-center gap-1.5 transition">
+                            <i data-lucide="layer-plus" class="w-3.5 h-3.5 text-cyan-400"></i> เพิ่มพาเลท
                         </button>
                     </div>
                 </div>
 
-                <div class="text-[11px] text-slate-400 bg-slate-900/40 p-3 rounded-xl border border-slate-800/80 flex flex-col gap-1">
-                    <div class="font-medium text-cyan-300 flex items-center gap-1">
-                        <i data-lucide="info" class="w-3.5 h-3.5"></i> รูปแบบพิกัดคลัง:
+                <!-- Footer Quick Actions -->
+                <div class="flex justify-between items-center pt-2 border-t border-slate-800/80 text-xs text-slate-400">
+                    <span id="pallet-count-badge" class="font-medium text-slate-300">0 พาเลท</span>
+                    <div class="flex items-center gap-1">
+                        <button id="btn-export" title="สำรองข้อมูล JSON" class="p-2 hover:bg-slate-800 rounded-xl transition text-slate-300"><i data-lucide="download" class="w-3.5 h-3.5"></i></button>
+                        <button id="btn-import-trigger" title="นำเข้าข้อมูล" class="p-2 hover:bg-slate-800 rounded-xl transition text-slate-300"><i data-lucide="upload" class="w-3.5 h-3.5"></i></button>
+                        <input type="file" id="file-import" accept=".json" class="hidden">
+                        <button id="btn-clear-all" title="ล้างทั้งหมด" class="p-2 hover:bg-rose-900/30 rounded-xl transition text-rose-400"><i data-lucide="trash-2" class="w-3.5 h-3.5"></i></button>
                     </div>
-                    <div>• แต่ละกล่องจะมีรหัสพิกัดระบุ เช่น <code class="text-amber-300 font-mono">P1-S1-L1</code> (พาเลท, ช่อง, ชั้น)</div>
-                    <div>• สามารถใช้ค้นหาพิกัดเพื่อเดินไปหยิบของจริงได้ทันที</div>
                 </div>
 
             </div>
 
-            <!-- Right Panel: Inventory List & Coordinates Summary -->
-            <div class="md:col-span-7 lg:col-span-8 glass-panel p-5 rounded-2xl shadow-2xl max-h-[40vh] md:max-h-[80vh] overflow-y-auto custom-scrollbar flex flex-col gap-3">
-                <div class="flex justify-between items-center border-b border-slate-700/60 pb-2">
-                    <h2 class="text-sm font-semibold text-slate-200 flex items-center gap-2">
-                        <i data-lucide="list" class="w-4 h-4 text-cyan-400"></i> สรุปรายการพิกัดและลังแฟ้ม
+            <!-- Right Panel: Coordinate Summary -->
+            <div class="md:col-span-7 lg:col-span-8 clean-glass p-4 rounded-3xl shadow-2xl max-h-[35vh] md:max-h-[75vh] overflow-y-auto custom-scrollbar flex flex-col gap-2.5">
+                <div class="flex justify-between items-center border-b border-slate-800/80 pb-2">
+                    <h2 class="text-xs font-medium text-slate-300 flex items-center gap-1.5">
+                        <i data-lucide="map-pin" class="w-3.5 h-3.5 text-cyan-400"></i> รายการพิกัดและกล่องทั้งหมด
                     </h2>
-                    <span id="pallet-count-badge" class="text-xs bg-indigo-950 text-indigo-300 border border-indigo-800 px-2.5 py-0.5 rounded-full font-medium">
-                        0 พาเลท
-                    </span>
+                    <span class="text-[10px] text-slate-400">คลิกตา 👁️ เพื่อซูมดูพาเลท</span>
                 </div>
 
-                <div id="pallet-list-container" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 pt-1">
+                <div id="pallet-list-container" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5 pt-0.5">
                 </div>
             </div>
 
@@ -233,7 +210,7 @@
         let pallet3DGroup = new THREE.Group();
         let boxMeshMap = new Map();
 
-        let currentMode = 'rotate'; // 'rotate' or 'drag'
+        let currentMode = 'rotate';
         let isDragging = false;
         let draggedMesh = null;
         let dragPlane = new THREE.Plane();
@@ -253,10 +230,10 @@
         const SPACING_Z = 5.5;
 
         const LOCAL_SLOT_OFFSETS = [
-            { x: -(BOX_WIDTH / 2 + BOX_GAP / 2), z: -(BOX_LENGTH / 2 + BOX_GAP / 2) }, // Slot 0
-            { x:  (BOX_WIDTH / 2 + BOX_GAP / 2), z: -(BOX_LENGTH / 2 + BOX_GAP / 2) }, // Slot 1
-            { x: -(BOX_WIDTH / 2 + BOX_GAP / 2), z:  (BOX_LENGTH / 2 + BOX_GAP / 2) }, // Slot 2
-            { x:  (BOX_WIDTH / 2 + BOX_GAP / 2), z:  (BOX_LENGTH / 2 + BOX_GAP / 2) }  // Slot 3
+            { x: -(BOX_WIDTH / 2 + BOX_GAP / 2), z: -(BOX_LENGTH / 2 + BOX_GAP / 2) },
+            { x:  (BOX_WIDTH / 2 + BOX_GAP / 2), z: -(BOX_LENGTH / 2 + BOX_GAP / 2) },
+            { x: -(BOX_WIDTH / 2 + BOX_GAP / 2), z:  (BOX_LENGTH / 2 + BOX_GAP / 2) },
+            { x:  (BOX_WIDTH / 2 + BOX_GAP / 2), z:  (BOX_LENGTH / 2 + BOX_GAP / 2) }
         ];
 
         const LAYER_COLORS = [
@@ -271,10 +248,12 @@
                     db = firebase.firestore();
                     isFirebaseLive = true;
                     
-                    statusBadge.innerHTML = `
-                        <span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
-                        <span class="text-emerald-400">CLOUD LIVE</span>
-                    `;
+                    if (statusBadge) {
+                        statusBadge.innerHTML = `
+                            <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+                            <span class="text-slate-200 text-[11px]">Cloud Live</span>
+                        `;
+                    }
 
                     db.collection('warehouse_system').doc('current_state')
                       .onSnapshot((doc) => {
@@ -298,10 +277,12 @@
         function enableLocalStorageFallback() {
             isFirebaseLive = false;
             const statusBadge = document.getElementById('status-badge');
-            statusBadge.innerHTML = `
-                <span class="w-2.5 h-2.5 rounded-full bg-amber-500"></span>
-                <span class="text-amber-400">LOCAL MODE</span>
-            `;
+            if (statusBadge) {
+                statusBadge.innerHTML = `
+                    <span class="w-2 h-2 rounded-full bg-amber-400"></span>
+                    <span class="text-slate-200 text-[11px]">Local Mode</span>
+                `;
+            }
             loadFromLocalStorage();
         }
 
@@ -350,14 +331,14 @@
             const container = document.getElementById('canvas-container');
             
             scene = new THREE.Scene();
-            scene.background = new THREE.Color(0x0b1120);
+            scene.background = new THREE.Color(0x070d1b);
 
             camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
             camera.position.set(0, 18, 26);
 
             renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
             renderer.setSize(window.innerWidth, window.innerHeight);
-            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
             container.appendChild(renderer.domElement);
 
             controls = new THREE.OrbitControls(camera, renderer.domElement);
@@ -382,11 +363,11 @@
             scene.add(pallet3DGroup);
 
             const dom = renderer.domElement;
-            dom.addEventListener('pointerdown', onPointerDown);
-            dom.addEventListener('pointermove', onPointerMove);
-            dom.addEventListener('pointerup', onPointerUp);
-            window.addEventListener('resize', onWindowResize);
+            dom.addEventListener('pointerdown', handleStart);
+            dom.addEventListener('pointermove', handleMove);
+            dom.addEventListener('pointerup', handleEnd);
 
+            window.addEventListener('resize', onWindowResize);
             animate();
         }
 
@@ -397,19 +378,16 @@
         }
 
         function getCachedLabelTexture(text) {
-            if (textureCache.has(text)) {
-                return textureCache.get(text);
-            }
+            if (textureCache.has(text)) return textureCache.get(text);
 
             const canvas = document.createElement('canvas');
-            canvas.width = 256;
-            canvas.height = 128;
+            canvas.width = 256; canvas.height = 128;
             const ctx = canvas.getContext('2d');
 
             ctx.fillStyle = '#ffffff';
             ctx.fillRect(0, 0, 256, 128);
             ctx.lineWidth = 8;
-            ctx.strokeStyle = '#0284c7';
+            ctx.strokeStyle = '#3b82f6';
             ctx.strokeRect(0, 0, 256, 128);
 
             ctx.fillStyle = '#0f172a';
@@ -442,7 +420,6 @@
                 palletMesh.position.set(posX, PALLET_HEIGHT / 2, posZ);
                 pallet3DGroup.add(palletMesh);
 
-                // Calculate layer stack per slot
                 const slotCounts = [0, 0, 0, 0];
 
                 (pallet.boxes || []).forEach((box) => {
@@ -450,7 +427,6 @@
                     const layerIdx = slotCounts[slotIdx];
                     slotCounts[slotIdx]++;
 
-                    // Assign Coordinate Code dynamically
                     box.code = `${pallet.id}-S${slotIdx + 1}-L${layerIdx + 1}`;
 
                     const boxX = posX + LOCAL_SLOT_OFFSETS[slotIdx].x;
@@ -500,11 +476,7 @@
 
         function createBoxMesh(w, h, l, colorHex, labelText) {
             const geometry = new THREE.BoxGeometry(w, h, l);
-            const material = new THREE.MeshLambertMaterial({
-                color: colorHex,
-                transparent: true,
-                opacity: 1.0
-            });
+            const material = new THREE.MeshLambertMaterial({ color: colorHex, transparent: true, opacity: 1.0 });
 
             const mesh = new THREE.Mesh(geometry, material);
 
@@ -524,12 +496,14 @@
             return mesh;
         }
 
-        // Drag & Drop 3D Logic
-        function onPointerDown(event) {
-            if (currentMode !== 'drag' || event.button !== 0) return;
+        function handleStart(event) {
+            if (currentMode !== 'drag') return;
+            const clientX = event.clientX || (event.touches && event.touches[0].clientX);
+            const clientY = event.clientY || (event.touches && event.touches[0].clientY);
+            if (!clientX || !clientY) return;
 
-            mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
-            mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+            mouse.x = (clientX / window.innerWidth) * 2 - 1;
+            mouse.y = -(clientY / window.innerHeight) * 2 + 1;
 
             raycaster.setFromCamera(mouse, camera);
             const intersects = raycaster.intersectObjects(pallet3DGroup.children, true);
@@ -539,143 +513,115 @@
                 while (obj && !obj.userData.isBox && obj.parent && obj !== pallet3DGroup) {
                     obj = obj.parent;
                 }
-
                 if (obj && obj.userData.isBox) {
                     isDragging = true;
                     draggedMesh = obj;
-
                     originalBoxPosition.copy(draggedMesh.position);
                     dragPlane.setFromNormalAndCoplanarPoint(new THREE.Vector3(0, 1, 0), draggedMesh.position);
 
                     if (raycaster.ray.intersectPlane(dragPlane, planeIntersect)) {
                         dragOffset.subVectors(draggedMesh.position, planeIntersect);
                     }
-
                     draggedMesh.position.y += 0.5;
-                    showDragToast(`กำลังย้าย: ${draggedMesh.userData.label}`);
+                    showToast(`ย้าย: ${draggedMesh.userData.label}`);
                 }
             }
         }
 
-        function onPointerMove(event) {
+        function handleMove(event) {
             if (!isDragging || !draggedMesh) return;
+            const clientX = event.clientX || (event.touches && event.touches[0].clientX);
+            const clientY = event.clientY || (event.touches && event.touches[0].clientY);
+            if (!clientX || !clientY) return;
 
-            mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
-            mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+            mouse.x = (clientX / window.innerWidth) * 2 - 1;
+            mouse.y = -(clientY / window.innerHeight) * 2 + 1;
 
             raycaster.setFromCamera(mouse, camera);
-
             if (raycaster.ray.intersectPlane(dragPlane, planeIntersect)) {
                 draggedMesh.position.x = planeIntersect.x + dragOffset.x;
                 draggedMesh.position.z = planeIntersect.z + dragOffset.z;
             }
         }
 
-        function onPointerUp() {
+        function handleEnd() {
             if (!isDragging || !draggedMesh) return;
-
             isDragging = false;
-            hideDragToast();
+            hideToast();
 
-            let closestPallet = null;
-            let minDistance = Infinity;
-
+            let closestPallet = null, minDistance = Infinity;
             palletsData.forEach((pallet, pIndex) => {
-                const col = pIndex % GRID_COLS;
-                const row = Math.floor(pIndex / GRID_COLS);
-                const posX = (col - 1) * SPACING_X;
-                const posZ = row * SPACING_Z;
-
+                const col = pIndex % GRID_COLS, row = Math.floor(pIndex / GRID_COLS);
+                const posX = (col - 1) * SPACING_X, posZ = row * SPACING_Z;
                 const distance = Math.hypot(draggedMesh.position.x - posX, draggedMesh.position.z - posZ);
-                if (distance < minDistance) {
-                    minDistance = distance;
-                    closestPallet = pallet;
-                }
+                if (distance < minDistance) { minDistance = distance; closestPallet = pallet; }
             });
 
             if (closestPallet && minDistance < 3.2) {
-                const col = (palletsData.findIndex(p => p.id === closestPallet.id)) % GRID_COLS;
-                const row = Math.floor((palletsData.findIndex(p => p.id === closestPallet.id)) / GRID_COLS);
-                const palletCenterX = (col - 1) * SPACING_X;
-                const palletCenterZ = row * SPACING_Z;
+                const pIdx = palletsData.findIndex(p => p.id === closestPallet.id);
+                const col = pIdx % GRID_COLS, row = Math.floor(pIdx / GRID_COLS);
+                const palletCenterX = (col - 1) * SPACING_X, palletCenterZ = row * SPACING_Z;
 
-                let closestSlot = 0;
-                let minSlotDist = Infinity;
-
+                let closestSlot = 0, minSlotDist = Infinity;
                 LOCAL_SLOT_OFFSETS.forEach((slotOffset, sIdx) => {
-                    const slotX = palletCenterX + slotOffset.x;
-                    const slotZ = palletCenterZ + slotOffset.z;
-                    const d = Math.hypot(draggedMesh.position.x - slotX, draggedMesh.position.z - slotZ);
-                    if (d < minSlotDist) {
-                        minSlotDist = d;
-                        closestSlot = sIdx;
-                    }
+                    const d = Math.hypot(draggedMesh.position.x - (palletCenterX + slotOffset.x), draggedMesh.position.z - (palletCenterZ + slotOffset.z));
+                    if (d < minSlotDist) { minSlotDist = d; closestSlot = sIdx; }
                 });
 
-                transferBoxToPalletAndSlot(draggedMesh.userData.palletId, closestPallet.id, draggedMesh.userData.boxId, closestSlot);
+                transferBox(draggedMesh.userData.palletId, closestPallet.id, draggedMesh.userData.boxId, closestSlot);
             } else {
                 draggedMesh.position.copy(originalBoxPosition);
             }
-
             draggedMesh = null;
         }
 
-        function transferBoxToPalletAndSlot(fromPalletId, toPalletId, boxId, newSlot) {
+        function transferBox(fromP, toP, boxId, newSlot) {
             let movedBox = null;
-
-            const sourcePallet = palletsData.find(p => p.id === fromPalletId);
-            if (sourcePallet && sourcePallet.boxes) {
-                sourcePallet.boxes = sourcePallet.boxes.filter(b => {
-                    if (b.id === boxId) {
-                        movedBox = b;
-                        return false;
-                    }
+            const src = palletsData.find(p => p.id === fromP);
+            if (src && src.boxes) {
+                src.boxes = src.boxes.filter(b => {
+                    if (b.id === boxId) { movedBox = b; return false; }
                     return true;
                 });
             }
-
-            const targetPallet = palletsData.find(p => p.id === toPalletId);
-            if (targetPallet && movedBox) {
+            const tgt = palletsData.find(p => p.id === toP);
+            if (tgt && movedBox) {
                 movedBox.slot = newSlot;
-                if (!targetPallet.boxes) targetPallet.boxes = [];
-                targetPallet.boxes.push(movedBox);
+                if (!tgt.boxes) tgt.boxes = [];
+                tgt.boxes.push(movedBox);
                 saveData();
             }
         }
 
-        function showDragToast(text) {
-            const toast = document.getElementById('drag-toast');
+        function showToast(text) {
+            const t = document.getElementById('drag-toast');
             document.getElementById('drag-toast-text').textContent = text;
-            toast.classList.remove('opacity-0', '-translate-y-2');
-            toast.classList.add('opacity-100', 'translate-y-0');
+            t.classList.remove('opacity-0', '-translate-y-2');
+            t.classList.add('opacity-100', 'translate-y-0');
         }
 
-        function hideDragToast() {
-            const toast = document.getElementById('drag-toast');
-            toast.classList.remove('opacity-100', 'translate-y-0');
-            toast.classList.add('opacity-0', '-translate-y-2');
+        function hideToast() {
+            const t = document.getElementById('drag-toast');
+            t.classList.remove('opacity-100', 'translate-y-0');
+            t.classList.add('opacity-0', '-translate-y-2');
         }
 
         function animate() {
             requestAnimationFrame(animate);
-            if (controls && currentMode === 'rotate') {
-                controls.update();
-            }
+            if (controls && currentMode === 'rotate') controls.update();
 
             searchPulseTime += 0.05;
-            const searchInput = document.getElementById('search-input');
-            const query = searchInput ? searchInput.value.trim().toLowerCase() : '';
+            const query = document.getElementById('search-input')?.value.trim().toLowerCase() || '';
 
             boxMeshMap.forEach((mesh, boxId) => {
                 if (mesh === draggedMesh) return;
-
                 if (query.length > 0) {
                     if (highlightedBoxIds.has(boxId)) {
                         mesh.material.color.setHex(0xfacc15);
                         mesh.material.opacity = 1.0;
                     } else {
                         mesh.material.color.setHex(mesh.userData.originalColor);
-                        mesh.material.opacity = 0.25;
+                        mesh.material.opacity = 0.2;
                     }
                 } else {
                     mesh.material.color.setHex(mesh.userData.originalColor);
@@ -683,9 +629,7 @@
                 }
             });
 
-            if (renderer && scene && camera) {
-                renderer.render(scene, camera);
-            }
+            if (renderer && scene && camera) renderer.render(scene, camera);
         }
 
         let searchPulseTime = 0;
@@ -702,53 +646,38 @@
             selectPallet.innerHTML = '';
 
             if (palletsData.length === 0) {
-                const opt = document.createElement('option');
-                opt.text = '-- กรุณาเพิ่มพาเลท --';
-                selectPallet.add(opt);
+                selectPallet.add(new Option('-- เพิ่มพาเลทก่อน --', ''));
             } else {
-                palletsData.forEach(p => {
-                    const opt = document.createElement('option');
-                    opt.value = p.id;
-                    opt.text = `${p.name} (${p.boxes ? p.boxes.length : 0} ลัง)`;
-                    selectPallet.add(opt);
-                });
+                palletsData.forEach(p => selectPallet.add(new Option(`${p.name} (${p.boxes?.length || 0} ลัง)`, p.id)));
             }
 
             document.getElementById('pallet-count-badge').textContent = `${palletsData.length} พาเลท`;
-
             const container = document.getElementById('pallet-list-container');
             container.innerHTML = '';
 
             palletsData.forEach((pallet) => {
                 const card = document.createElement('div');
-                card.className = "bg-slate-900/90 border border-slate-700/80 rounded-xl p-3 flex flex-col gap-2.5 hover:border-slate-500 transition shadow-md";
+                card.className = "bg-slate-900/50 border border-slate-800/80 rounded-2xl p-3 flex flex-col gap-2 transition hover:border-slate-700";
 
-                const boxCount = pallet.boxes ? pallet.boxes.length : 0;
+                const boxCount = pallet.boxes?.length || 0;
+                let boxesHTML = boxCount === 0 ? `<p class="text-[11px] text-slate-500 italic py-1">ไม่มีลังในพาเลทนี้</p>` : '';
 
-                let boxesHTML = '';
-                if (boxCount === 0) {
-                    boxesHTML = `<p class="text-xs text-slate-500 italic py-1">ไม่มีลังบนพาเลทนี้</p>`;
-                } else {
-                    // Recalculate code dynamically for UI list
+                if (boxCount > 0) {
                     const slotCounts = [0, 0, 0, 0];
                     boxesHTML = pallet.boxes.map((b) => {
                         const slotIdx = b.slot !== undefined ? b.slot : 0;
-                        const layerIdx = slotCounts[slotIdx];
+                        const code = `${pallet.id}-S${slotIdx + 1}-L${slotCounts[slotIdx] + 1}`;
                         slotCounts[slotIdx]++;
-                        const code = `${pallet.id}-S${slotIdx + 1}-L${layerIdx + 1}`;
 
                         return `
-                            <div class="flex justify-between items-center text-xs bg-slate-800/80 px-2.5 py-1.5 rounded-lg border border-slate-700/50">
-                                <div class="flex items-center gap-1.5 truncate mr-1">
-                                    <span class="w-2 h-2 rounded-full bg-cyan-400"></span>
-                                    <div class="truncate">
-                                        <span class="text-slate-200 font-medium truncate block" title="${b.label}">${b.label}</span>
-                                        <span class="text-[10px] text-amber-300 font-mono">[${code}]</span>
-                                    </div>
+                            <div class="flex justify-between items-center text-xs bg-slate-900/80 px-2.5 py-1.5 rounded-xl border border-slate-800">
+                                <div class="truncate mr-1">
+                                    <span class="text-slate-200 font-medium truncate block text-[11px]">${b.label}</span>
+                                    <span class="text-[10px] text-amber-400 font-mono">[${code}]</span>
                                 </div>
-                                <div class="flex items-center gap-1.5 shrink-0">
-                                    <button onclick="moveBoxPrompt('${pallet.id}', '${b.id}')" title="ย้ายพาเลท/ช่อง" class="text-cyan-400 hover:text-cyan-300 transition">🔄</button>
-                                    <button onclick="removeBox('${pallet.id}', '${b.id}')" title="ลบกล่อง" class="text-rose-400 hover:text-rose-300 transition">✖</button>
+                                <div class="flex items-center gap-1 shrink-0">
+                                    <button onclick="moveBoxPrompt('${pallet.id}', '${b.id}')" class="text-indigo-400 hover:text-indigo-300 p-1"><i data-lucide="repeat" class="w-3.5 h-3.5"></i></button>
+                                    <button onclick="removeBox('${pallet.id}', '${b.id}')" class="text-rose-400 hover:text-rose-300 p-1"><i data-lucide="x" class="w-3.5 h-3.5"></i></button>
                                 </div>
                             </div>
                         `;
@@ -756,69 +685,51 @@
                 }
 
                 card.innerHTML = `
-                    <div class="flex justify-between items-center border-b border-slate-800 pb-2">
+                    <div class="flex justify-between items-center border-b border-slate-800/80 pb-2">
                         <div>
-                            <h3 class="text-xs font-bold text-cyan-300">${pallet.name}</h3>
-                            <p class="text-[10px] text-slate-400">${boxCount} ลัง</p>
+                            <h3 class="text-xs font-semibold text-slate-200">${pallet.name}</h3>
+                            <p class="text-[10px] text-slate-400">${boxCount} ลังเอกสาร</p>
                         </div>
                         <div class="flex items-center gap-1">
-                            <button onclick="focusPallet('${pallet.id}')" title="ซูมกล้องไปที่พาเลทนี้" class="p-1 text-slate-400 hover:text-cyan-400 transition">👁️</button>
-                            <button onclick="removePallet('${pallet.id}')" title="ลบพาเลท" class="p-1 text-slate-400 hover:text-rose-400 transition">🗑️</button>
+                            <button onclick="focusPallet('${pallet.id}')" class="p-1.5 text-slate-400 hover:text-indigo-400 transition"><i data-lucide="eye" class="w-3.5 h-3.5"></i></button>
+                            <button onclick="removePallet('${pallet.id}')" class="p-1.5 text-slate-400 hover:text-rose-400 transition"><i data-lucide="trash" class="w-3.5 h-3.5"></i></button>
                         </div>
                     </div>
-                    <div class="flex flex-col gap-1.5 max-h-36 overflow-y-auto custom-scrollbar pr-0.5">
+                    <div class="flex flex-col gap-1.5 max-h-28 overflow-y-auto custom-scrollbar pr-0.5">
                         ${boxesHTML}
                     </div>
                 `;
-
                 container.appendChild(card);
             });
-
             renderIcons();
         }
 
         function addPallet() {
-            const name = prompt("กรุณาระบุชื่อพาเลท / โซนจัดเก็บ:", `พาเลท ${String.fromCharCode(65 + palletsData.length)}`);
+            const name = prompt("ระบุชื่อพาเลท / โซนจัดเก็บ:", `พาเลท ${String.fromCharCode(65 + palletsData.length)}`);
             if (!name) return;
-
             palletsData.push({ id: 'P' + (palletsData.length + 1), name: name.trim(), boxes: [] });
             saveData();
         }
 
-        function removePallet(palletId) {
-            if (!confirm("คุณแน่ใจหรือไม่ที่จะลบพาเลทนี้พร้อมลังเอกสารทั้งหมด?")) return;
-            palletsData = palletsData.filter(p => p.id !== palletId);
+        function removePallet(id) {
+            if (!confirm("ลบพาเลทนี้พร้อมกล่องทั้งหมด?")) return;
+            palletsData = palletsData.filter(p => p.id !== id);
             saveData();
         }
 
         function addBox() {
-            const selectPallet = document.getElementById('select-pallet');
-            const selectSlot = document.getElementById('select-slot');
-            const inputLabel = document.getElementById('input-box-label');
-            
-            const palletId = selectPallet.value;
-            const slotIdx = parseInt(selectSlot.value, 10);
-            const label = inputLabel.value.trim();
+            const palletId = document.getElementById('select-pallet').value;
+            const slotIdx = parseInt(document.getElementById('select-slot').value, 10);
+            const label = document.getElementById('input-box-label').value.trim();
 
-            if (!palletId || selectPallet.options[0].text.includes('--')) {
-                alert("กรุณาเพิ่มพาเลทก่อนทำการวางกล่อง");
-                return;
-            }
-
-            if (!label) {
-                alert("กรุณากรอกชื่อข้างกล่องหรือรหัสเอกสาร");
-                return;
-            }
+            if (!palletId) { alert("กรุณาเพิ่มพาเลทก่อน"); return; }
+            if (!label) { alert("กรุณากรอกชื่อข้างกล่อง"); return; }
 
             const pallet = palletsData.find(p => p.id === palletId);
             if (pallet) {
                 if (!pallet.boxes) pallet.boxes = [];
-                pallet.boxes.push({ 
-                    id: 'B_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4), 
-                    label: label,
-                    slot: slotIdx 
-                });
-                inputLabel.value = '';
+                pallet.boxes.push({ id: 'B_' + Date.now(), label, slot: slotIdx });
+                document.getElementById('input-box-label').value = '';
                 saveData();
             }
         }
@@ -831,37 +742,13 @@
             }
         }
 
-        function moveBoxPrompt(fromPalletId, boxId) {
-            const targetPalletId = prompt("ย้ายไปพาเลทใด? (กรอก ID เช่น P1 หรือชื่อพาเลท):\n" + palletsData.map(p => `${p.id} = ${p.name}`).join("\n"));
-            if (!targetPalletId) return;
-
-            const targetPallet = palletsData.find(p => p.id === targetPalletId || p.name.includes(targetPalletId));
-            if (!targetPallet) {
-                alert("ไม่พบพาเลทปลายทางที่ระบุ");
-                return;
-            }
-
-            const newSlot = prompt("เลือกช่องวางเป้าหมายบนพาเลทใหม่ (กรอกเลข 1, 2, 3 หรือ 4):", "1");
-            const slotVal = Math.max(0, Math.min(3, parseInt(newSlot, 10) - 1 || 0));
-
-            let movedBox = null;
-            const sourcePallet = palletsData.find(p => p.id === fromPalletId);
-            if (sourcePallet && sourcePallet.boxes) {
-                sourcePallet.boxes = sourcePallet.boxes.filter(b => {
-                    if (b.id === boxId) {
-                        movedBox = b;
-                        return false;
-                    }
-                    return true;
-                });
-            }
-
-            if (movedBox) {
-                movedBox.slot = slotVal;
-                if (!targetPallet.boxes) targetPallet.boxes = [];
-                targetPallet.boxes.push(movedBox);
-                saveData();
-            }
+        function moveBoxPrompt(fromP, boxId) {
+            const targetId = prompt("ย้ายไปพาเลทใด (ระบุ ID เช่น P1 หรือชื่อ):", palletsData[0]?.id || "");
+            if (!targetId) return;
+            const tgt = palletsData.find(p => p.id === targetId || p.name.includes(targetId));
+            if (!tgt) { alert("ไม่พบพาเลทปลายทาง"); return; }
+            const slot = parseInt(prompt("เลือกช่องวาง (1, 2, 3 หรือ 4):", "1"), 10) - 1;
+            transferBox(fromP, tgt.id, boxId, Math.max(0, Math.min(3, slot || 0)));
         }
 
         function handleSearch() {
@@ -871,136 +758,87 @@
             if (!searchInput) return;
 
             const query = searchInput.value.trim().toLowerCase();
-
             highlightedBoxIds.clear();
             resultsList.innerHTML = '';
 
             if (query.length > 0) {
                 searchClear.classList.remove('hidden');
                 resultsList.classList.remove('hidden');
+                let match = 0;
 
-                let matchCount = 0;
                 palletsData.forEach(pallet => {
                     const slotCounts = [0, 0, 0, 0];
-                    (pallet.boxes || []).forEach((box) => {
-                        const slotIdx = box.slot !== undefined ? box.slot : 0;
-                        const layerIdx = slotCounts[slotIdx];
-                        slotCounts[slotIdx]++;
-                        const code = `${pallet.id}-S${slotIdx + 1}-L${layerIdx + 1}`.toLowerCase();
+                    (pallet.boxes || []).forEach(box => {
+                        const sIdx = box.slot !== undefined ? box.slot : 0;
+                        const code = `${pallet.id}-S${sIdx + 1}-L${slotCounts[sIdx] + 1}`.toLowerCase();
+                        slotCounts[sIdx]++;
 
                         if (box.label.toLowerCase().includes(query) || code.includes(query)) {
                             highlightedBoxIds.add(box.id);
-                            matchCount++;
-
+                            match++;
                             const item = document.createElement('div');
-                            item.className = "flex justify-between items-center bg-slate-800/90 hover:bg-slate-700 px-3 py-1.5 rounded-lg border border-slate-600 text-xs cursor-pointer transition";
-                            item.onclick = () => focusBox(box.id, pallet.id);
-                            item.innerHTML = `
-                                <div class="truncate mr-2">
-                                    <span class="font-medium text-amber-300">${box.label}</span>
-                                    <span class="text-[10px] text-cyan-400 block">${pallet.name} • พิกัด: [${code.toUpperCase()}]</span>
-                                </div>
-                                <span class="text-cyan-400">🎯</span>
-                            `;
+                            item.className = "flex justify-between items-center bg-slate-900/90 hover:bg-slate-800 px-3 py-1.5 rounded-xl text-xs cursor-pointer transition border border-slate-800";
+                            item.onclick = () => focusPallet(pallet.id);
+                            item.innerHTML = `<span class="text-amber-300 font-medium">${box.label} <span class="text-[10px] text-cyan-400">[${code.toUpperCase()}]</span></span><i data-lucide="target" class="w-3.5 h-3.5 text-indigo-400"></i>`;
                             resultsList.appendChild(item);
                         }
                     });
                 });
-
-                if (matchCount === 0) {
-                    resultsList.innerHTML = `<p class="text-xs text-slate-400 italic p-1.5 text-center">ไม่พบพิกัดหรือกล่องที่ตรงกับคำค้นหา</p>`;
-                }
+                if (match === 0) resultsList.innerHTML = `<p class="text-[11px] text-slate-500 italic p-1 text-center">ไม่พบผลการค้นหา</p>`;
             } else {
                 searchClear.classList.add('hidden');
                 resultsList.classList.add('hidden');
             }
-
             renderIcons();
         }
 
         function focusPallet(palletId) {
-            const pIndex = palletsData.findIndex(p => p.id === palletId);
-            if (pIndex === -1) return;
+            const pIdx = palletsData.findIndex(p => p.id === palletId);
+            if (pIdx === -1) return;
+            const targetX = ((pIdx % GRID_COLS) - 1) * SPACING_X;
+            const targetZ = Math.floor(pIdx / GRID_COLS) * SPACING_Z;
 
-            const col = pIndex % GRID_COLS;
-            const row = Math.floor(pIndex / GRID_COLS);
-
-            const targetX = (col - 1) * SPACING_X;
-            const targetZ = row * SPACING_Z;
-
-            gsap.to(camera.position, {
-                x: targetX,
-                y: 8,
-                z: targetZ + 12,
-                duration: 1,
-                ease: "power2.inOut"
-            });
-
-            gsap.to(controls.target, {
-                x: targetX,
-                y: 1.5,
-                z: targetZ,
-                duration: 1,
-                ease: "power2.inOut"
-            });
-        }
-
-        function focusBox(boxId, palletId) {
-            focusPallet(palletId);
+            gsap.to(camera.position, { x: targetX, y: 8, z: targetZ + 12, duration: 1, ease: "power2.inOut" });
+            gsap.to(controls.target, { x: targetX, y: 1.5, z: targetZ, duration: 1, ease: "power2.inOut" });
         }
 
         function exportJSON() {
             const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(palletsData, null, 2));
             const a = document.createElement('a');
             a.setAttribute("href", dataStr);
-            a.setAttribute("download", `warehouse_layout_${new Date().toISOString().slice(0,10)}.json`);
-            document.body.appendChild(a);
-            a.click();
-            a.remove();
+            a.setAttribute("download", `warehouse_${new Date().toISOString().slice(0,10)}.json`);
+            document.body.appendChild(a); a.click(); a.remove();
         }
 
-        function importJSON(event) {
-            const file = event.target.files[0];
+        function importJSON(e) {
+            const file = e.target.files[0];
             if (!file) return;
-
             const reader = new FileReader();
-            reader.onload = function(e) {
+            reader.onload = function(evt) {
                 try {
-                    const importedData = JSON.parse(e.target.result);
-                    if (Array.isArray(importedData)) {
-                        palletsData = importedData;
-                        saveData();
-                        alert("นำเข้าข้อมูลสำเร็จเรียบร้อย!");
-                    } else {
-                        alert("รูปแบบไฟล์ JSON ไม่ถูกต้อง");
-                    }
-                } catch (err) {
-                    alert("เกิดข้อผิดพลาดในการอ่านไฟล์ JSON");
-                }
+                    const data = JSON.parse(evt.target.result);
+                    if (Array.isArray(data)) { palletsData = data; saveData(); alert("นำเข้าข้อมูลสำเร็จ!"); }
+                } catch(err) { alert("ไฟล์ JSON ไม่ถูกต้อง"); }
             };
             reader.readAsText(file);
         }
 
         function clearAllData() {
-            if (confirm("คุณแน่ใจหรือไม่ที่จะล้างข้อมูลคลังทั้งหมด?")) {
-                palletsData = [];
-                saveData();
-            }
+            if (confirm("ล้างข้อมูลทั้งหมดในคลัง?")) { palletsData = []; saveData(); }
         }
 
         function setMode(mode) {
             currentMode = mode;
-            const btnRotate = document.getElementById('btn-mode-rotate');
-            const btnDrag = document.getElementById('btn-mode-drag');
-
+            const btnR = document.getElementById('btn-mode-rotate');
+            const btnD = document.getElementById('btn-mode-drag');
             if (mode === 'rotate') {
                 controls.enabled = true;
-                btnRotate.className = "px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition bg-indigo-600 text-white";
-                btnDrag.className = "px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition text-slate-400 hover:text-white";
+                btnR.className = "px-3 py-1.5 rounded-xl text-xs font-medium flex items-center gap-1.5 transition bg-indigo-600 text-white shadow";
+                btnD.className = "px-3 py-1.5 rounded-xl text-xs font-medium flex items-center gap-1.5 transition text-slate-400 hover:text-white";
             } else {
                 controls.enabled = false;
-                btnDrag.className = "px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition bg-indigo-600 text-white";
-                btnRotate.className = "px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition text-slate-400 hover:text-white";
+                btnD.className = "px-3 py-1.5 rounded-xl text-xs font-medium flex items-center gap-1.5 transition bg-indigo-600 text-white shadow";
+                btnR.className = "px-3 py-1.5 rounded-xl text-xs font-medium flex items-center gap-1.5 transition text-slate-400 hover:text-white";
             }
         }
 
@@ -1010,27 +848,17 @@
 
             document.getElementById('btn-mode-rotate').addEventListener('click', () => setMode('rotate'));
             document.getElementById('btn-mode-drag').addEventListener('click', () => setMode('drag'));
-
             document.getElementById('btn-add-pallet').addEventListener('click', addPallet);
             document.getElementById('btn-add-box').addEventListener('click', addBox);
             
             const searchInput = document.getElementById('search-input');
             const searchClear = document.getElementById('search-clear');
-
             searchInput.addEventListener('input', handleSearch);
-            searchClear.addEventListener('click', () => {
-                searchInput.value = '';
-                handleSearch();
-            });
-
-            document.getElementById('input-box-label').addEventListener('keypress', (e) => {
-                if (e.key === 'Enter') addBox();
-            });
+            searchClear.addEventListener('click', () => { searchInput.value = ''; handleSearch(); });
+            searchInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') addBox(); });
 
             document.getElementById('btn-export').addEventListener('click', exportJSON);
-            document.getElementById('btn-import-trigger').addEventListener('click', () => {
-                document.getElementById('file-import').click();
-            });
+            document.getElementById('btn-import-trigger').addEventListener('click', () => document.getElementById('file-import').click());
             document.getElementById('file-import').addEventListener('change', importJSON);
             document.getElementById('btn-clear-all').addEventListener('click', clearAllData);
 
