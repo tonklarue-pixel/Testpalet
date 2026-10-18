@@ -161,19 +161,15 @@
         </div>
 
         <div class="p-4 md:p-6 grid grid-cols-1 lg:grid-cols-12 gap-5 overflow-y-auto custom-scrollbar flex-1 max-w-7xl w-full mx-auto">
-            
-            <!-- Left: Product Catalog to Sell (7 Cols) -->
             <div class="lg:col-span-7 flex flex-col gap-3">
                 <div class="relative">
                     <input type="text" id="pos-search-input" placeholder="🔍 ค้นหาสินค้าที่จะขาย..." 
                         class="w-full bg-slate-900/90 border border-slate-700/80 rounded-2xl px-4 py-3 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-violet-500 transition font-medium">
                 </div>
                 <div id="pos-catalog-container" class="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-[55vh] overflow-y-auto custom-scrollbar pr-1">
-                    <!-- รายการสินค้าสำหรับขาย -->
                 </div>
             </div>
 
-            <!-- Right: Cart & Checkout Summary (5 Cols) -->
             <div class="lg:col-span-5 flex flex-col gap-3 bg-slate-900/80 border border-slate-800 p-4 rounded-3xl h-fit">
                 <h3 class="text-sm font-bold text-white flex items-center gap-2 border-b border-slate-800 pb-2.5">
                     <i data-lucide="receipt" class="w-4 h-4 text-violet-400"></i> ตะกร้าสินค้าปัจจุบัน
@@ -201,7 +197,6 @@
                     </div>
                 </div>
             </div>
-
         </div>
     </div>
 
@@ -231,24 +226,37 @@
             </div>
         </div>
 
-        <!-- Mobile Bottom Drawer Panel -->
-        <div class="pointer-events-auto w-full max-w-md mx-auto">
+        <!-- Mobile Bottom Drawer Panel with Toggle Feature -->
+        <div class="pointer-events-auto w-full max-w-md mx-auto relative">
             
-            <div class="clean-glass p-4 rounded-3xl shadow-2xl flex flex-col gap-3 max-h-[50vh] md:max-h-[75vh]">
+            <!-- ปุ่มเปิดเมนูลอยแบบวงกลม (เมื่อย่อเมนูเก็บอยู่) -->
+            <button id="btn-open-drawer" onclick="toggleMainDrawer(true)" class="hidden fixed bottom-5 right-5 z-20 clean-glass p-3.5 rounded-full text-indigo-400 hover:text-white border border-indigo-500/50 shadow-2xl transition active:scale-90">
+                <i data-lucide="sliders-horizontal" class="w-6 h-6"></i>
+            </button>
+
+            <!-- กล่องเมนูด้านล่างหลัก -->
+            <div id="main-bottom-drawer" class="clean-glass p-4 rounded-3xl shadow-2xl flex flex-col gap-3 max-h-[50vh] md:max-h-[75vh] transition-all duration-300 transform translate-y-0 opacity-100">
                 
-                <!-- Tab Switcher (Added POS Menu) -->
-                <div class="grid grid-cols-4 gap-1 bg-slate-900/80 p-1 rounded-2xl border border-slate-800">
-                    <button id="tab-btn-add" class="py-2.5 rounded-xl text-[11px] font-semibold flex items-center justify-center gap-1 transition bg-indigo-600 text-white shadow">
-                        <i data-lucide="plus-circle" class="w-3.5 h-3.5"></i> เพิ่ม
-                    </button>
-                    <button id="tab-btn-stock" onclick="openStockModal()" class="py-2.5 rounded-xl text-[11px] font-semibold flex items-center justify-center gap-1 transition text-slate-400 hover:text-white">
-                        <i data-lucide="clipboard-check" class="w-3.5 h-3.5"></i> สต๊อก
-                    </button>
-                    <button id="tab-btn-pos" onclick="openPOSModal()" class="py-2.5 rounded-xl text-[11px] font-semibold flex items-center justify-center gap-1 transition bg-violet-600/30 text-violet-300 hover:bg-violet-600 hover:text-white shadow">
-                        <i data-lucide="shopping-cart" class="w-3.5 h-3.5"></i> ขายสินค้า
-                    </button>
-                    <button id="tab-btn-list" class="py-2.5 rounded-xl text-[11px] font-semibold flex items-center justify-center gap-1 transition text-slate-400 hover:text-white">
-                        <i data-lucide="list" class="w-3.5 h-3.5"></i> พิกัด
+                <!-- Tab Switcher & Toggle Minimize Button -->
+                <div class="flex items-center gap-2">
+                    <div class="grid grid-cols-4 gap-1 bg-slate-900/80 p-1 rounded-2xl border border-slate-800 flex-1">
+                        <button id="tab-btn-add" class="py-2.5 rounded-xl text-[11px] font-semibold flex items-center justify-center gap-1 transition bg-indigo-600 text-white shadow">
+                            <i data-lucide="plus-circle" class="w-3.5 h-3.5"></i> เพิ่ม
+                        </button>
+                        <button id="tab-btn-stock" onclick="openStockModal()" class="py-2.5 rounded-xl text-[11px] font-semibold flex items-center justify-center gap-1 transition text-slate-400 hover:text-white">
+                            <i data-lucide="clipboard-check" class="w-3.5 h-3.5"></i> สต๊อก
+                        </button>
+                        <button id="tab-btn-pos" onclick="openPOSModal()" class="py-2.5 rounded-xl text-[11px] font-semibold flex items-center justify-center gap-1 transition bg-violet-600/30 text-violet-300 hover:bg-violet-600 hover:text-white shadow">
+                            <i data-lucide="shopping-cart" class="w-3.5 h-3.5"></i> ขายสินค้า
+                        </button>
+                        <button id="tab-btn-list" class="py-2.5 rounded-xl text-[11px] font-semibold flex items-center justify-center gap-1 transition text-slate-400 hover:text-white">
+                            <i data-lucide="list" class="w-3.5 h-3.5"></i> พิกัด
+                        </button>
+                    </div>
+
+                    <!-- ปุ่มกดพับ/ย่อเมนูลง -->
+                    <button onclick="toggleMainDrawer(false)" title="ย่อเมนูเก็บ" class="p-2.5 bg-slate-900/80 hover:bg-slate-800 text-slate-400 hover:text-white rounded-2xl border border-slate-800 transition active:scale-90 shrink-0">
+                        <i data-lucide="chevron-down" class="w-5 h-5"></i>
                     </button>
                 </div>
 
@@ -343,7 +351,7 @@
         let palletsData = [];
         let highlightedBoxIds = new Set();
         let textureCache = new Map();
-        let salesCart = []; // ตะกร้าสินค้า POS
+        let salesCart = [];
 
         let scene, camera, renderer, controls, raycaster, mouse;
         let pallet3DGroup = new THREE.Group();
@@ -379,6 +387,22 @@
         const LAYER_COLORS = [
             0x3b82f6, 0x10b981, 0xf59e0b, 0x8b5cf6, 0xec4899, 0x06b6d4
         ];
+
+        // 🔘 Toggle Drawer Functions
+        function toggleMainDrawer(isOpen) {
+            const drawer = document.getElementById('main-bottom-drawer');
+            const openBtn = document.getElementById('btn-open-drawer');
+
+            if (isOpen) {
+                drawer.classList.remove('translate-y-full', 'opacity-0', 'pointer-events-none');
+                drawer.classList.add('translate-y-0', 'opacity-100');
+                openBtn.classList.add('hidden');
+            } else {
+                drawer.classList.add('translate-y-full', 'opacity-0', 'pointer-events-none');
+                drawer.classList.remove('translate-y-0', 'opacity-100');
+                openBtn.classList.remove('hidden');
+            }
+        }
 
         function showCustomPrompt(title, desc, defaultValue, callback) {
             const modal = document.getElementById('custom-modal');
@@ -891,12 +915,11 @@
 
             const searchKey = document.getElementById('pos-search-input')?.value.trim().toLowerCase() || '';
 
-            // รวมสินค้าจากสต๊อก
             const inventory = {};
             palletsData.forEach(pallet => {
                 (pallet.boxes || []).forEach(box => {
                     const label = box.label || 'ลังไม่ระบุชื่อ';
-                    if (!inventory[label]) inventory[label] = { total: 0, price: 150 }; // ตั้งราคาเริ่มต้น 150 บาทต่อลัง
+                    if (!inventory[label]) inventory[label] = { total: 0, price: 150 };
                     inventory[label].total++;
                 });
             });
@@ -1027,7 +1050,6 @@
 
             if (!confirm("ยืนยันการขายและตัดสต๊อกสินค้าออกจากคลัง 3D?")) return;
 
-            // วนลูปหักสินค้าออกจาก palletsData ทีละรายการ
             salesCart.forEach(cartItem => {
                 let remainingToDeduct = cartItem.qty;
                 for (let pallet of palletsData) {
