@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>3D Warehouse & Stock Management System</title>
+    <title>3D Warehouse & POS System</title>
     
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -44,7 +44,7 @@
             border: 1px solid rgba(255, 255, 255, 0.12);
             box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
         }
-        .stock-modal-bg {
+        .stock-modal-bg, .pos-modal-bg {
             background: rgba(7, 13, 27, 0.96);
             backdrop-filter: blur(25px);
             -webkit-backdrop-filter: blur(25px);
@@ -92,8 +92,6 @@
 
     <!-- 📊 FULL SCREEN STOCK MANAGEMENT OVERLAY -->
     <div id="stock-full-modal" class="fixed inset-0 z-40 stock-modal-bg hidden flex-col transition-opacity duration-300 opacity-0 pointer-events-auto overflow-hidden">
-        
-        <!-- Stock Modal Header -->
         <div class="p-4 md:p-6 border-b border-slate-800/80 flex justify-between items-center bg-slate-900/80 shadow-lg shrink-0">
             <div class="flex items-center gap-3">
                 <div class="p-3 bg-emerald-600/20 text-emerald-400 rounded-2xl border border-emerald-500/30">
@@ -111,10 +109,7 @@
             </button>
         </div>
 
-        <!-- Stock Modal Body Container -->
         <div class="p-4 md:p-6 flex flex-col gap-4 overflow-y-auto custom-scrollbar flex-1 max-w-5xl w-full mx-auto">
-            
-            <!-- Dashboard Stats Summary Cards -->
             <div class="grid grid-cols-3 gap-3">
                 <div class="bg-slate-900/80 border border-slate-800 p-3.5 rounded-2xl flex flex-col gap-1">
                     <span class="text-[11px] text-slate-400 font-medium">รายการสินค้า (SKUs)</span>
@@ -130,13 +125,11 @@
                 </div>
             </div>
 
-            <!-- Controls: Search and Filter Chips -->
             <div class="flex flex-col sm:flex-row gap-3 justify-between items-center bg-slate-900/60 p-3 rounded-2xl border border-slate-800">
                 <div class="relative w-full sm:w-80">
                     <input type="text" id="stock-search-input-full" placeholder="🔍 ค้นชื่อสินค้า / พิกัด..." 
                         class="w-full bg-slate-950 border border-slate-700/80 rounded-xl px-3.5 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 transition font-medium">
                 </div>
-
                 <div class="flex gap-1.5 w-full sm:w-auto overflow-x-auto custom-scrollbar">
                     <button onclick="filterStock('all')" id="stock-filter-all" class="flex-1 sm:flex-initial px-3.5 py-2 rounded-xl text-xs font-bold bg-emerald-600 text-white shadow">ทั้งหมด</button>
                     <button onclick="filterStock('low')" id="stock-filter-low" class="flex-1 sm:flex-initial px-3.5 py-2 rounded-xl text-xs font-semibold bg-slate-800 text-amber-400 border border-slate-700">สต๊อกต่ำ (&lt;5)</button>
@@ -144,13 +137,72 @@
                 </div>
             </div>
 
-            <!-- Main Stock Items List -->
-            <div id="stock-full-list-container" class="flex flex-col gap-3 pb-6">
-                <!-- รายการสินค้าจะถูกสร้างที่นี่ -->
+            <div id="stock-full-list-container" class="flex flex-col gap-3 pb-6"></div>
+        </div>
+    </div>
+
+    <!-- 🛒 FULL SCREEN POS / SALES SYSTEM OVERLAY -->
+    <div id="pos-full-modal" class="fixed inset-0 z-40 pos-modal-bg hidden flex-col transition-opacity duration-300 opacity-0 pointer-events-auto overflow-hidden">
+        <div class="p-4 md:p-6 border-b border-slate-800/80 flex justify-between items-center bg-slate-900/80 shadow-lg shrink-0">
+            <div class="flex items-center gap-3">
+                <div class="p-3 bg-violet-600/20 text-violet-400 rounded-2xl border border-violet-500/30">
+                    <i data-lucide="shopping-cart" class="w-6 h-6"></i>
+                </div>
+                <div>
+                    <h2 class="text-lg font-bold text-white leading-tight">ระบบขายสินค้า (POS & Sales)</h2>
+                    <p class="text-xs text-slate-400">เลือกสินค้าเพื่อขายและตัดสต๊อกออกจากคลังอัตโนมัติ</p>
+                </div>
+            </div>
+
+            <button onclick="closePOSModal()" class="bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white p-2.5 rounded-2xl border border-slate-700/80 transition active:scale-90 flex items-center gap-1.5 text-xs font-semibold">
+                <i data-lucide="x" class="w-5 h-5"></i>
+                <span class="hidden sm:inline">ปิดหน้าต่าง</span>
+            </button>
+        </div>
+
+        <div class="p-4 md:p-6 grid grid-cols-1 lg:grid-cols-12 gap-5 overflow-y-auto custom-scrollbar flex-1 max-w-7xl w-full mx-auto">
+            
+            <!-- Left: Product Catalog to Sell (7 Cols) -->
+            <div class="lg:col-span-7 flex flex-col gap-3">
+                <div class="relative">
+                    <input type="text" id="pos-search-input" placeholder="🔍 ค้นหาสินค้าที่จะขาย..." 
+                        class="w-full bg-slate-900/90 border border-slate-700/80 rounded-2xl px-4 py-3 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-violet-500 transition font-medium">
+                </div>
+                <div id="pos-catalog-container" class="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-[55vh] overflow-y-auto custom-scrollbar pr-1">
+                    <!-- รายการสินค้าสำหรับขาย -->
+                </div>
+            </div>
+
+            <!-- Right: Cart & Checkout Summary (5 Cols) -->
+            <div class="lg:col-span-5 flex flex-col gap-3 bg-slate-900/80 border border-slate-800 p-4 rounded-3xl h-fit">
+                <h3 class="text-sm font-bold text-white flex items-center gap-2 border-b border-slate-800 pb-2.5">
+                    <i data-lucide="receipt" class="w-4 h-4 text-violet-400"></i> ตะกร้าสินค้าปัจจุบัน
+                </h3>
+
+                <div id="pos-cart-items" class="flex flex-col gap-2 max-h-48 overflow-y-auto custom-scrollbar">
+                    <p class="text-xs text-slate-500 italic text-center py-6">ยังไม่มีสินค้าในตะกร้า</p>
+                </div>
+
+                <div class="border-t border-slate-800 pt-3 flex flex-col gap-2">
+                    <div class="flex justify-between items-center text-xs text-slate-400">
+                        <span>จำนวนรวม:</span>
+                        <span id="pos-cart-total-qty" class="font-bold text-white font-mono">0 ลัง</span>
+                    </div>
+                    <div class="flex justify-between items-center text-sm font-bold text-white">
+                        <span>ยอดรวมทั้งสิ้น:</span>
+                        <span id="pos-cart-total-price" class="text-emerald-400 font-mono text-lg">฿0.00</span>
+                    </div>
+
+                    <div class="flex gap-2 pt-2">
+                        <button onclick="clearCart()" class="flex-1 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold py-3 rounded-2xl transition border border-slate-700 active:scale-95">ล้างตะกร้า</button>
+                        <button onclick="checkoutCart()" class="flex-[2] bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold py-3 rounded-2xl transition shadow-lg shadow-emerald-600/30 active:scale-95 flex items-center justify-center gap-1.5">
+                            <i data-lucide="check-circle" class="w-4 h-4"></i> ยืนยันการขาย (ตัดสต๊อก)
+                        </button>
+                    </div>
+                </div>
             </div>
 
         </div>
-
     </div>
 
     <!-- UI Overlay Layer (Main Controls) -->
@@ -184,16 +236,19 @@
             
             <div class="clean-glass p-4 rounded-3xl shadow-2xl flex flex-col gap-3 max-h-[50vh] md:max-h-[75vh]">
                 
-                <!-- Tab Switcher -->
-                <div class="grid grid-cols-3 gap-1 bg-slate-900/80 p-1 rounded-2xl border border-slate-800">
-                    <button id="tab-btn-add" class="py-2.5 rounded-xl text-xs font-semibold flex items-center justify-center gap-1 transition bg-indigo-600 text-white shadow">
-                        <i data-lucide="plus-circle" class="w-4 h-4"></i> เพิ่มกล่อง
+                <!-- Tab Switcher (Added POS Menu) -->
+                <div class="grid grid-cols-4 gap-1 bg-slate-900/80 p-1 rounded-2xl border border-slate-800">
+                    <button id="tab-btn-add" class="py-2.5 rounded-xl text-[11px] font-semibold flex items-center justify-center gap-1 transition bg-indigo-600 text-white shadow">
+                        <i data-lucide="plus-circle" class="w-3.5 h-3.5"></i> เพิ่ม
                     </button>
-                    <button id="tab-btn-stock" onclick="openStockModal()" class="py-2.5 rounded-xl text-xs font-semibold flex items-center justify-center gap-1 transition bg-emerald-600/30 text-emerald-400 hover:bg-emerald-600 hover:text-white shadow">
-                        <i data-lucide="clipboard-check" class="w-4 h-4"></i> เช็คสต๊อก
+                    <button id="tab-btn-stock" onclick="openStockModal()" class="py-2.5 rounded-xl text-[11px] font-semibold flex items-center justify-center gap-1 transition text-slate-400 hover:text-white">
+                        <i data-lucide="clipboard-check" class="w-3.5 h-3.5"></i> สต๊อก
                     </button>
-                    <button id="tab-btn-list" class="py-2.5 rounded-xl text-xs font-semibold flex items-center justify-center gap-1 transition text-slate-400 hover:text-white">
-                        <i data-lucide="list" class="w-4 h-4"></i> พิกัดทั้งหมด
+                    <button id="tab-btn-pos" onclick="openPOSModal()" class="py-2.5 rounded-xl text-[11px] font-semibold flex items-center justify-center gap-1 transition bg-violet-600/30 text-violet-300 hover:bg-violet-600 hover:text-white shadow">
+                        <i data-lucide="shopping-cart" class="w-3.5 h-3.5"></i> ขายสินค้า
+                    </button>
+                    <button id="tab-btn-list" class="py-2.5 rounded-xl text-[11px] font-semibold flex items-center justify-center gap-1 transition text-slate-400 hover:text-white">
+                        <i data-lucide="list" class="w-3.5 h-3.5"></i> พิกัด
                     </button>
                 </div>
 
@@ -288,6 +343,7 @@
         let palletsData = [];
         let highlightedBoxIds = new Set();
         let textureCache = new Map();
+        let salesCart = []; // ตะกร้าสินค้า POS
 
         let scene, camera, renderer, controls, raycaster, mouse;
         let pallet3DGroup = new THREE.Group();
@@ -777,6 +833,7 @@
             render3DScene();
             updateUI();
             updateStockCheckUI();
+            updatePOSCatalog();
             handleSearch();
         }
 
@@ -809,15 +866,200 @@
         }
 
         // =========================================================
-        // 📊 FULL SCREEN STOCK MANAGEMENT MODAL FUNCTIONS
+        // 🛒 POS & SALES SYSTEM LOGIC
+        // =========================================================
+        function openPOSModal() {
+            const modal = document.getElementById('pos-full-modal');
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+            setTimeout(() => { modal.classList.remove('opacity-0'); }, 10);
+            updatePOSCatalog();
+        }
+
+        function closePOSModal() {
+            const modal = document.getElementById('pos-full-modal');
+            modal.classList.add('opacity-0');
+            setTimeout(() => {
+                modal.classList.add('hidden');
+                modal.classList.remove('flex');
+            }, 300);
+        }
+
+        function updatePOSCatalog() {
+            const container = document.getElementById('pos-catalog-container');
+            if (!container) return;
+
+            const searchKey = document.getElementById('pos-search-input')?.value.trim().toLowerCase() || '';
+
+            // รวมสินค้าจากสต๊อก
+            const inventory = {};
+            palletsData.forEach(pallet => {
+                (pallet.boxes || []).forEach(box => {
+                    const label = box.label || 'ลังไม่ระบุชื่อ';
+                    if (!inventory[label]) inventory[label] = { total: 0, price: 150 }; // ตั้งราคาเริ่มต้น 150 บาทต่อลัง
+                    inventory[label].total++;
+                });
+            });
+
+            const labels = Object.keys(inventory).sort();
+            container.innerHTML = '';
+
+            if (labels.length === 0) {
+                container.innerHTML = `<div class="col-span-2 p-10 text-center text-slate-500 italic text-xs">ไม่มีสินค้าในคลังสำหรับขาย</div>`;
+                return;
+            }
+
+            let matchCount = 0;
+            labels.forEach(label => {
+                if (searchKey && !label.toLowerCase().includes(searchKey)) return;
+                matchCount++;
+
+                const item = inventory[label];
+
+                const card = document.createElement('div');
+                card.className = "bg-slate-900/90 border border-slate-800 rounded-2xl p-3.5 flex flex-col justify-between gap-3 shadow transition hover:border-violet-500/50";
+                
+                card.innerHTML = `
+                    <div class="flex justify-between items-start gap-2">
+                        <div class="flex flex-col gap-0.5">
+                            <span class="text-sm font-bold text-white">${label}</span>
+                            <span class="text-xs text-emerald-400 font-mono">฿${item.price}.00 / ลัง</span>
+                        </div>
+                        <span class="bg-violet-500/20 text-violet-300 border border-violet-500/30 text-xs font-mono font-bold px-2.5 py-1 rounded-xl">
+                            คงเหลือ ${item.total}
+                        </span>
+                    </div>
+
+                    <button onclick="addToCart('${label.replace(/'/g, "\\'")}', ${item.price}, ${item.total})" class="w-full bg-violet-600 hover:bg-violet-500 text-white text-xs font-semibold py-2.5 rounded-xl transition shadow flex items-center justify-center gap-1.5 active:scale-95">
+                        <i data-lucide="plus-circle" class="w-4 h-4"></i> เพิ่มลงตะกร้า
+                    </button>
+                `;
+                container.appendChild(card);
+            });
+
+            if (matchCount === 0) {
+                container.innerHTML = `<div class="col-span-2 p-8 text-center text-slate-500 italic text-xs">ไม่พบสินค้าที่ค้นหา</div>`;
+            }
+            renderIcons();
+        }
+
+        function addToCart(label, price, maxStock) {
+            let cartItem = salesCart.find(i => i.label === label);
+            if (cartItem) {
+                if (cartItem.qty < maxStock) {
+                    cartItem.qty++;
+                } else {
+                    alert("สินค้าในคลังหมดแล้ว!");
+                    return;
+                }
+            } else {
+                salesCart.push({ label, price, qty: 1, maxStock });
+            }
+            renderCart();
+        }
+
+        function updateCartQty(label, change) {
+            let cartItem = salesCart.find(i => i.label === label);
+            if (cartItem) {
+                cartItem.qty += change;
+                if (cartItem.qty <= 0) {
+                    salesCart = salesCart.filter(i => i.label !== label);
+                } else if (cartItem.qty > cartItem.maxStock) {
+                    cartItem.qty = cartItem.maxStock;
+                }
+            }
+            renderCart();
+        }
+
+        function clearCart() {
+            salesCart = [];
+            renderCart();
+        }
+
+        function renderCart() {
+            const container = document.getElementById('pos-cart-items');
+            const totalQtyEl = document.getElementById('pos-cart-total-qty');
+            const totalPriceEl = document.getElementById('pos-cart-total-price');
+
+            if (!container) return;
+            container.innerHTML = '';
+
+            if (salesCart.length === 0) {
+                container.innerHTML = `<p class="text-xs text-slate-500 italic text-center py-6">ยังไม่มีสินค้าในตะกร้า</p>`;
+                totalQtyEl.textContent = '0 ลัง';
+                totalPriceEl.textContent = '฿0.00';
+                return;
+            }
+
+            let totalQty = 0;
+            let totalPrice = 0;
+
+            salesCart.forEach(item => {
+                totalQty += item.qty;
+                totalPrice += (item.price * item.qty);
+
+                const row = document.createElement('div');
+                row.className = "flex justify-between items-center bg-slate-950 px-3 py-2.5 rounded-xl border border-slate-800 text-xs";
+                row.innerHTML = `
+                    <div class="flex flex-col flex-1 mr-2 truncate">
+                        <span class="text-white font-bold truncate">${item.label}</span>
+                        <span class="text-emerald-400 font-mono">฿${item.price} x ${item.qty}</span>
+                    </div>
+                    <div class="flex items-center gap-1 shrink-0">
+                        <button onclick="updateCartQty('${item.label.replace(/'/g, "\\'")}', -1)" class="w-6 h-6 bg-slate-800 hover:bg-slate-700 text-white rounded font-bold">-</button>
+                        <span class="w-6 text-center font-mono font-bold text-white">${item.qty}</span>
+                        <button onclick="updateCartQty('${item.label.replace(/'/g, "\\'")}', 1)" class="w-6 h-6 bg-violet-600 hover:bg-violet-500 text-white rounded font-bold">+</button>
+                    </div>
+                `;
+                container.appendChild(row);
+            });
+
+            totalQtyEl.textContent = `${totalQty} ลัง`;
+            totalPriceEl.textContent = `฿${totalPrice.toLocaleString()}.00`;
+            renderIcons();
+        }
+
+        function checkoutCart() {
+            if (salesCart.length === 0) {
+                alert("กรุณาเลือกสินค้าใส่ตะกร้าก่อน");
+                return;
+            }
+
+            if (!confirm("ยืนยันการขายและตัดสต๊อกสินค้าออกจากคลัง 3D?")) return;
+
+            // วนลูปหักสินค้าออกจาก palletsData ทีละรายการ
+            salesCart.forEach(cartItem => {
+                let remainingToDeduct = cartItem.qty;
+                for (let pallet of palletsData) {
+                    if (remainingToDeduct <= 0) break;
+                    if (!pallet.boxes) continue;
+
+                    for (let i = pallet.boxes.length - 1; i >= 0; i--) {
+                        if (remainingToDeduct <= 0) break;
+                        if (pallet.boxes[i].label === cartItem.label) {
+                            pallet.boxes.splice(i, 1);
+                            remainingToDeduct--;
+                        }
+                    }
+                }
+            });
+
+            saveData();
+            alert("✅ ขายสินค้าและตัดสต๊อกสำเร็จ!");
+            salesCart = [];
+            renderCart();
+            updatePOSCatalog();
+            closePOSModal();
+        }
+
+        // =========================================================
+        // 📊 STOCK CHECK MODAL FUNCTIONS
         // =========================================================
         function openStockModal() {
             const modal = document.getElementById('stock-full-modal');
             modal.classList.remove('hidden');
             modal.classList.add('flex');
-            setTimeout(() => {
-                modal.classList.remove('opacity-0');
-            }, 10);
+            setTimeout(() => { modal.classList.remove('opacity-0'); }, 10);
             updateStockCheckUI();
         }
 
@@ -852,7 +1094,6 @@
 
             const searchKey = document.getElementById('stock-search-input-full')?.value.trim().toLowerCase() || '';
 
-            // รวมสถิติมุมมองคลัง
             const inventory = {};
             let totalBoxesCount = 0;
 
@@ -861,10 +1102,7 @@
                     totalBoxesCount++;
                     const label = box.label || 'ลังไม่ระบุชื่อ';
                     if (!inventory[label]) {
-                        inventory[label] = {
-                            total: 0,
-                            palletsMap: {}
-                        };
+                        inventory[label] = { total: 0, palletsMap: {} };
                     }
                     inventory[label].total++;
                     inventory[label].palletsMap[pallet.id] = (inventory[label].palletsMap[pallet.id] || 0) + 1;
@@ -872,8 +1110,6 @@
             });
 
             const labels = Object.keys(inventory).sort();
-
-            // อัปเดตสถิติ Header Dashboard
             let lowStockCount = 0;
             labels.forEach(lbl => { if (inventory[lbl].total < 5) lowStockCount++; });
 
@@ -904,7 +1140,7 @@
                 }).join(' • ');
 
                 const card = document.createElement('div');
-                card.className = "bg-slate-900/80 border border-slate-800 rounded-2xl p-4 flex flex-col md:flex-row justify-between items-start md:items-center gap-3 hover:border-slate-700 transition shadow-lg";
+                card.className = "bg-slate-900/80 border border-slate-800 rounded-2xl p-4 flex flex-col md:flex-row justify-between items-start md:items-center gap-3 shadow-lg";
 
                 const isLow = item.total < 5;
                 const badgeColor = isLow ? "bg-amber-500/20 text-amber-300 border-amber-500/40" : "bg-emerald-500/20 text-emerald-400 border-emerald-500/40";
@@ -998,13 +1234,7 @@
 
                         let group = groupedBoxes.find(g => g.label === b.label && g.slot === slotIdx);
                         if (!group) {
-                            group = {
-                                label: b.label,
-                                slot: slotIdx,
-                                count: 0,
-                                firstBoxId: b.id,
-                                firstCode: code
-                            };
+                            group = { label: b.label, slot: slotIdx, count: 0, firstBoxId: b.id, firstCode: code };
                             groupedBoxes.push(group);
                         }
                         group.count++;
@@ -1021,10 +1251,9 @@
                                     <span class="text-[10px] text-cyan-400 font-mono font-medium block mt-0.5">[${g.firstCode}]</span>
                                 </div>
                                 <div class="flex items-center gap-1 shrink-0">
-                                    <button onclick="decrementBox('${pallet.id}', '${g.label.replace(/'/g, "\\'")}', ${g.slot})" title="ลดจำนวน" class="bg-slate-800 hover:bg-slate-700 text-slate-200 w-7 h-7 flex items-center justify-center rounded-lg border border-slate-700 active:scale-90 font-bold text-sm">-</button>
-                                    <button onclick="incrementBox('${pallet.id}', '${g.label.replace(/'/g, "\\'")}', ${g.slot})" title="เพิ่มจำนวน" class="bg-indigo-600 hover:bg-indigo-500 text-white w-7 h-7 flex items-center justify-center rounded-lg border border-indigo-500/50 active:scale-90 font-bold text-sm">+</button>
-                                    
-                                    <button onclick="moveBoxPrompt('${pallet.id}', '${g.firstBoxId}')" title="ย้ายพาเลท" class="bg-indigo-950/60 text-indigo-400 hover:text-indigo-300 p-1.5 rounded-lg border border-indigo-800/40 active:scale-90 ml-1"><i data-lucide="repeat" class="w-3.5 h-3.5"></i></button>
+                                    <button onclick="decrementBox('${pallet.id}', '${g.label.replace(/'/g, "\\'")}', ${g.slot})" class="bg-slate-800 hover:bg-slate-700 text-slate-200 w-7 h-7 flex items-center justify-center rounded-lg border border-slate-700 active:scale-90 font-bold text-sm">-</button>
+                                    <button onclick="incrementBox('${pallet.id}', '${g.label.replace(/'/g, "\\'")}', ${g.slot})" class="bg-indigo-600 hover:bg-indigo-500 text-white w-7 h-7 flex items-center justify-center rounded-lg border border-indigo-500/50 active:scale-90 font-bold text-sm">+</button>
+                                    <button onclick="moveBoxPrompt('${pallet.id}', '${g.firstBoxId}')" class="bg-indigo-950/60 text-indigo-400 p-1.5 rounded-lg border border-indigo-800/40 active:scale-90 ml-1"><i data-lucide="repeat" class="w-3.5 h-3.5"></i></button>
                                 </div>
                             </div>
                         `;
@@ -1042,9 +1271,7 @@
                             <button onclick="removePallet('${pallet.id}')" class="p-2 text-slate-400 hover:text-rose-400 active:scale-90 transition"><i data-lucide="trash" class="w-4.5 h-4.5"></i></button>
                         </div>
                     </div>
-                    <div class="flex flex-col gap-2 max-h-44 overflow-y-auto custom-scrollbar pr-0.5">
-                        ${boxesHTML}
-                    </div>
+                    <div class="flex flex-col gap-2 max-h-44 overflow-y-auto custom-scrollbar pr-0.5">${boxesHTML}</div>
                 `;
                 container.appendChild(card);
             });
@@ -1058,8 +1285,8 @@
             const contentAdd = document.getElementById('tab-content-add');
             const contentList = document.getElementById('tab-content-list');
 
-            const activeStyle = "py-2.5 rounded-xl text-xs font-semibold flex items-center justify-center gap-1 transition bg-indigo-600 text-white shadow";
-            const inactiveStyle = "py-2.5 rounded-xl text-xs font-semibold flex items-center justify-center gap-1 transition text-slate-400 hover:text-white";
+            const activeStyle = "py-2.5 rounded-xl text-[11px] font-semibold flex items-center justify-center gap-1 transition bg-indigo-600 text-white shadow";
+            const inactiveStyle = "py-2.5 rounded-xl text-[11px] font-semibold flex items-center justify-center gap-1 transition text-slate-400 hover:text-white";
 
             btnAdd.className = tab === 'add' ? activeStyle : inactiveStyle;
             btnList.className = tab === 'list' ? activeStyle : inactiveStyle;
@@ -1233,6 +1460,7 @@
             searchInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') addBox(); });
 
             document.getElementById('stock-search-input-full')?.addEventListener('input', updateStockCheckUI);
+            document.getElementById('pos-search-input')?.addEventListener('input', updatePOSCatalog);
 
             document.getElementById('btn-export').addEventListener('click', exportJSON);
             document.getElementById('btn-import-trigger').addEventListener('click', () => document.getElementById('file-import').click());
