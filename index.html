@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>3D Warehouse & POS System</title>
+    <title>3D Warehouse & POS System (F/A Filter)</title>
     
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -99,7 +99,7 @@
                 </div>
                 <div>
                     <h2 class="text-lg font-bold text-white leading-tight">ระบบตรวจสอบสต๊อกสินค้า</h2>
-                    <p class="text-xs text-slate-400">รายการสต๊อกคงเหลือและตำแหน่งจัดเก็บทั้งหมด</p>
+                    <p class="text-xs text-slate-400">แยกประเภทแฟ้ม F / A และตำแหน่งจัดเก็บทั้งหมด</p>
                 </div>
             </div>
 
@@ -126,14 +126,16 @@
             </div>
 
             <div class="flex flex-col sm:flex-row gap-3 justify-between items-center bg-slate-900/60 p-3 rounded-2xl border border-slate-800">
-                <div class="relative w-full sm:w-80">
+                <div class="relative w-full sm:w-72">
                     <input type="text" id="stock-search-input-full" placeholder="🔍 ค้นชื่อสินค้า / พิกัด..." 
                         class="w-full bg-slate-950 border border-slate-700/80 rounded-xl px-3.5 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 transition font-medium">
                 </div>
+                <!-- ปุ่มกรอง F และ A เพิ่มเข้ามาตรงนี้ -->
                 <div class="flex gap-1.5 w-full sm:w-auto overflow-x-auto custom-scrollbar">
-                    <button onclick="filterStock('all')" id="stock-filter-all" class="flex-1 sm:flex-initial px-3.5 py-2 rounded-xl text-xs font-bold bg-emerald-600 text-white shadow">ทั้งหมด</button>
-                    <button onclick="filterStock('low')" id="stock-filter-low" class="flex-1 sm:flex-initial px-3.5 py-2 rounded-xl text-xs font-semibold bg-slate-800 text-amber-400 border border-slate-700">สต๊อกต่ำ (&lt;5)</button>
-                    <button onclick="filterStock('in')" id="stock-filter-in" class="flex-1 sm:flex-initial px-3.5 py-2 rounded-xl text-xs font-semibold bg-slate-800 text-slate-300 border border-slate-700">มีสินค้า</button>
+                    <button onclick="filterStock('all')" id="stock-filter-all" class="px-3 py-2 rounded-xl text-xs font-bold bg-emerald-600 text-white shadow shrink-0">ทั้งหมด</button>
+                    <button onclick="filterStock('F')" id="stock-filter-F" class="px-3 py-2 rounded-xl text-xs font-semibold bg-slate-800 text-cyan-400 border border-slate-700 shrink-0">📁 ประเภท F</button>
+                    <button onclick="filterStock('A')" id="stock-filter-A" class="px-3 py-2 rounded-xl text-xs font-semibold bg-slate-800 text-amber-400 border border-slate-700 shrink-0">📁 ประเภท A</button>
+                    <button onclick="filterStock('low')" id="stock-filter-low" class="px-3 py-2 rounded-xl text-xs font-semibold bg-slate-800 text-amber-300 border border-slate-700 shrink-0">สต๊อกต่ำ (&lt;5)</button>
                 </div>
             </div>
 
@@ -166,8 +168,7 @@
                     <input type="text" id="pos-search-input" placeholder="🔍 ค้นหาสินค้าที่จะขาย..." 
                         class="w-full bg-slate-900/90 border border-slate-700/80 rounded-2xl px-4 py-3 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-violet-500 transition font-medium">
                 </div>
-                <div id="pos-catalog-container" class="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-[55vh] overflow-y-auto custom-scrollbar pr-1">
-                </div>
+                <div id="pos-catalog-container" class="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-[55vh] overflow-y-auto custom-scrollbar pr-1"></div>
             </div>
 
             <div class="lg:col-span-5 flex flex-col gap-3 bg-slate-900/80 border border-slate-800 p-4 rounded-3xl h-fit">
@@ -211,7 +212,7 @@
                 </div>
                 <div>
                     <h1 class="font-semibold text-xs leading-tight text-white">คลังสินค้า 3D</h1>
-                    <p class="text-[10px] text-slate-400">ระบบพิกัดอัตโนมัติ</p>
+                    <p class="text-[10px] text-slate-400">ระบบจัดการสต๊อก (F / A)</p>
                 </div>
             </div>
 
@@ -229,15 +230,12 @@
         <!-- Mobile Bottom Drawer Panel with Toggle Feature -->
         <div class="pointer-events-auto w-full max-w-md mx-auto relative">
             
-            <!-- ปุ่มเปิดเมนูลอยแบบวงกลม (เมื่อย่อเมนูเก็บอยู่) -->
             <button id="btn-open-drawer" onclick="toggleMainDrawer(true)" class="hidden fixed bottom-5 right-5 z-20 clean-glass p-3.5 rounded-full text-indigo-400 hover:text-white border border-indigo-500/50 shadow-2xl transition active:scale-90">
                 <i data-lucide="sliders-horizontal" class="w-6 h-6"></i>
             </button>
 
-            <!-- กล่องเมนูด้านล่างหลัก -->
-            <div id="main-bottom-drawer" class="clean-glass p-4 rounded-3xl shadow-2xl flex flex-col gap-3 max-h-[50vh] md:max-h-[75vh] transition-all duration-300 transform translate-y-0 opacity-100">
+            <div id="main-bottom-drawer" class="clean-glass p-4 rounded-3xl shadow-2xl flex flex-col gap-3 max-h-[55vh] md:max-h-[75vh] transition-all duration-300 transform translate-y-0 opacity-100">
                 
-                <!-- Tab Switcher & Toggle Minimize Button -->
                 <div class="flex items-center gap-2">
                     <div class="grid grid-cols-4 gap-1 bg-slate-900/80 p-1 rounded-2xl border border-slate-800 flex-1">
                         <button id="tab-btn-add" class="py-2.5 rounded-xl text-[11px] font-semibold flex items-center justify-center gap-1 transition bg-indigo-600 text-white shadow">
@@ -254,7 +252,6 @@
                         </button>
                     </div>
 
-                    <!-- ปุ่มกดพับ/ย่อเมนูลง -->
                     <button onclick="toggleMainDrawer(false)" title="ย่อเมนูเก็บ" class="p-2.5 bg-slate-900/80 hover:bg-slate-800 text-slate-400 hover:text-white rounded-2xl border border-slate-800 transition active:scale-90 shrink-0">
                         <i data-lucide="chevron-down" class="w-5 h-5"></i>
                     </button>
@@ -294,11 +291,20 @@
                                 <option value="3">ช่อง 4 (ขวาล่าง)</option>
                             </select>
                         </div>
+                        <!-- เพิ่มตัวเลือกประเภทแฟ้ม F หรือ A -->
                         <div class="flex flex-col gap-1">
-                            <label class="text-[10px] text-slate-400 font-medium">ชื่อข้างกล่อง</label>
-                            <input type="text" id="input-box-label" placeholder="แฟ้มบัญชี 67" 
-                                class="bg-slate-900/90 border border-slate-700/80 rounded-2xl px-3 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 transition">
+                            <label class="text-[10px] text-slate-400 font-medium">ประเภทแฟ้ม</label>
+                            <select id="select-type" class="bg-slate-900/90 border border-slate-700/80 rounded-2xl px-3 py-2.5 text-xs text-cyan-300 font-bold focus:outline-none focus:border-indigo-500 transition">
+                                <option value="F">ประเภท F</option>
+                                <option value="A">ประเภท A</option>
+                            </select>
                         </div>
+                    </div>
+
+                    <div class="flex flex-col gap-1">
+                        <label class="text-[10px] text-slate-400 font-medium">ชื่อข้างกล่อง</label>
+                        <input type="text" id="input-box-label" placeholder="แฟ้มบัญชี 67" 
+                            class="bg-slate-900/90 border border-slate-700/80 rounded-2xl px-3 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 transition">
                     </div>
 
                     <button id="btn-add-box" class="w-full bg-indigo-600 hover:bg-indigo-500 active:scale-95 text-white text-xs font-semibold py-3 rounded-2xl flex items-center justify-center gap-2 transition shadow-lg shadow-indigo-600/30">
@@ -388,7 +394,6 @@
             0x3b82f6, 0x10b981, 0xf59e0b, 0x8b5cf6, 0xec4899, 0x06b6d4
         ];
 
-        // 🔘 Toggle Drawer Functions
         function toggleMainDrawer(isOpen) {
             const drawer = document.getElementById('main-bottom-drawer');
             const openBtn = document.getElementById('btn-open-drawer');
@@ -567,8 +572,9 @@
             renderer.setSize(window.innerWidth, window.innerHeight);
         }
 
-        function getCachedLabelTexture(text) {
-            if (textureCache.has(text)) return textureCache.get(text);
+        function getCachedLabelTexture(text, fileType) {
+            const cacheKey = `${text}_${fileType || 'F'}`;
+            if (textureCache.has(cacheKey)) return textureCache.get(cacheKey);
 
             const canvas = document.createElement('canvas');
             canvas.width = 256; canvas.height = 128;
@@ -577,19 +583,28 @@
             ctx.fillStyle = '#ffffff';
             ctx.fillRect(0, 0, 256, 128);
             ctx.lineWidth = 8;
-            ctx.strokeStyle = '#3b82f6';
+            ctx.strokeStyle = fileType === 'A' ? '#f59e0b' : '#3b82f6';
             ctx.strokeRect(0, 0, 256, 128);
 
+            // วาดป้ายบอกประเภท F หรือ A มุมบนขวา
+            ctx.fillStyle = fileType === 'A' ? '#f59e0b' : '#3b82f6';
+            ctx.fillRect(206, 0, 50, 35);
+            ctx.fillStyle = '#ffffff';
+            ctx.font = 'bold 18px Prompt, sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(fileType || 'F', 231, 18);
+
             ctx.fillStyle = '#0f172a';
-            ctx.font = 'bold 20px Prompt, sans-serif';
+            ctx.font = 'bold 18px Prompt, sans-serif';
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
             
-            const truncatedText = text.length > 14 ? text.substring(0, 12) + '..' : text;
-            ctx.fillText(truncatedText, 128, 64);
+            const truncatedText = text.length > 13 ? text.substring(0, 11) + '..' : text;
+            ctx.fillText(truncatedText, 115, 68);
 
             const texture = new THREE.CanvasTexture(canvas);
-            textureCache.set(text, texture);
+            textureCache.set(cacheKey, texture);
             return texture;
         }
 
@@ -624,13 +639,14 @@
                     const boxZ = posZ + LOCAL_SLOT_OFFSETS[slotIdx].z;
 
                     const colorHex = LAYER_COLORS[layerIdx % LAYER_COLORS.length];
-                    const boxMesh = createBoxMesh(BOX_WIDTH, BOX_HEIGHT, BOX_LENGTH, colorHex, box.label || 'ลัง');
+                    const boxMesh = createBoxMesh(BOX_WIDTH, BOX_HEIGHT, BOX_LENGTH, colorHex, box.label || 'ลัง', box.fileType || 'F');
                     
                     boxMesh.position.set(boxX, boxY, boxZ);
                     boxMesh.userData = { 
                         boxId: box.id, 
                         palletId: pallet.id, 
                         label: box.label,
+                        fileType: box.fileType || 'F',
                         code: box.code,
                         originalColor: colorHex,
                         isBox: true
@@ -644,7 +660,6 @@
 
         function createPalletMesh(w, h, l) {
             const group = new THREE.Group();
-            
             const woodMat = new THREE.MeshLambertMaterial({ color: 0xd97706 });
             const blockMat = new THREE.MeshLambertMaterial({ color: 0xb45309 });
 
@@ -683,17 +698,10 @@
                 group.add(bPlank);
             });
 
-            const shadowGeo = new THREE.PlaneGeometry(w + 0.2, l + 0.2);
-            const shadowMat = new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.2 });
-            const shadow = new THREE.Mesh(shadowGeo, shadowMat);
-            shadow.rotation.x = -Math.PI / 2;
-            shadow.position.y = 0.005;
-            group.add(shadow);
-
             return group;
         }
 
-        function createBoxMesh(w, h, l, colorHex, labelText) {
+        function createBoxMesh(w, h, l, colorHex, labelText, fileType) {
             const geometry = new THREE.BoxGeometry(w, h, l);
             const material = new THREE.MeshLambertMaterial({ color: colorHex, transparent: true, opacity: 1.0 });
 
@@ -704,7 +712,7 @@
             const line = new THREE.LineSegments(edges, lineMat);
             mesh.add(line);
 
-            const texture = getCachedLabelTexture(labelText);
+            const texture = getCachedLabelTexture(labelText, fileType);
             const labelGeo = new THREE.PlaneGeometry(w * 0.85, h * 0.55);
             const labelMat = new THREE.MeshBasicMaterial({ map: texture, side: THREE.DoubleSide });
 
@@ -829,7 +837,6 @@
             requestAnimationFrame(animate);
             if (controls && currentMode === 'rotate') controls.update();
 
-            searchPulseTime += 0.05;
             const query = document.getElementById('search-input')?.value.trim().toLowerCase() || '';
 
             boxMeshMap.forEach((mesh, boxId) => {
@@ -851,8 +858,6 @@
             if (renderer && scene && camera) renderer.render(scene, camera);
         }
 
-        let searchPulseTime = 0;
-
         function updateAll() {
             render3DScene();
             updateUI();
@@ -861,26 +866,28 @@
             handleSearch();
         }
 
-        function incrementBox(palletId, boxLabel, slotIdx) {
+        function incrementBox(palletId, boxLabel, slotIdx, fileType) {
             const pallet = palletsData.find(p => p.id === palletId);
             if (pallet) {
                 if (!pallet.boxes) pallet.boxes = [];
                 pallet.boxes.push({
                     id: 'B_' + Date.now() + '_' + Math.random().toString(36).substring(2, 5),
                     label: boxLabel,
+                    fileType: fileType || 'F',
                     slot: slotIdx !== undefined ? slotIdx : 0
                 });
                 saveData();
             }
         }
 
-        function decrementBox(palletId, boxLabel, slotIdx) {
+        function decrementBox(palletId, boxLabel, slotIdx, fileType) {
             const pallet = palletsData.find(p => p.id === palletId);
             if (pallet && pallet.boxes) {
                 for (let i = pallet.boxes.length - 1; i >= 0; i--) {
                     const b = pallet.boxes[i];
                     const bSlot = b.slot !== undefined ? b.slot : 0;
-                    if (b.label === boxLabel && (slotIdx === undefined || bSlot === slotIdx)) {
+                    const bType = b.fileType || 'F';
+                    if (b.label === boxLabel && bType === fileType && (slotIdx === undefined || bSlot === slotIdx)) {
                         pallet.boxes.splice(i, 1);
                         break;
                     }
@@ -919,33 +926,39 @@
             palletsData.forEach(pallet => {
                 (pallet.boxes || []).forEach(box => {
                     const label = box.label || 'ลังไม่ระบุชื่อ';
-                    if (!inventory[label]) inventory[label] = { total: 0, price: 150 };
-                    inventory[label].total++;
+                    const fileType = box.fileType || 'F';
+                    const key = `${label}_${fileType}`;
+                    if (!inventory[key]) inventory[key] = { label, fileType, total: 0, price: 150 };
+                    inventory[key].total++;
                 });
             });
 
-            const labels = Object.keys(inventory).sort();
+            const keys = Object.keys(inventory).sort();
             container.innerHTML = '';
 
-            if (labels.length === 0) {
+            if (keys.length === 0) {
                 container.innerHTML = `<div class="col-span-2 p-10 text-center text-slate-500 italic text-xs">ไม่มีสินค้าในคลังสำหรับขาย</div>`;
                 return;
             }
 
             let matchCount = 0;
-            labels.forEach(label => {
-                if (searchKey && !label.toLowerCase().includes(searchKey)) return;
+            keys.forEach(k => {
+                const item = inventory[k];
+                if (searchKey && !item.label.toLowerCase().includes(searchKey)) return;
                 matchCount++;
 
-                const item = inventory[label];
+                const typeBadge = item.fileType === 'A' ? 'bg-amber-500/20 text-amber-300 border-amber-500/30' : 'bg-cyan-500/20 text-cyan-300 border-cyan-500/30';
 
                 const card = document.createElement('div');
                 card.className = "bg-slate-900/90 border border-slate-800 rounded-2xl p-3.5 flex flex-col justify-between gap-3 shadow transition hover:border-violet-500/50";
                 
                 card.innerHTML = `
                     <div class="flex justify-between items-start gap-2">
-                        <div class="flex flex-col gap-0.5">
-                            <span class="text-sm font-bold text-white">${label}</span>
+                        <div class="flex flex-col gap-1">
+                            <div class="flex items-center gap-1.5">
+                                <span class="text-sm font-bold text-white">${item.label}</span>
+                                <span class="${typeBadge} border text-[10px] font-bold px-2 py-0.5 rounded-md">ประเภท ${item.fileType}</span>
+                            </div>
                             <span class="text-xs text-emerald-400 font-mono">฿${item.price}.00 / ลัง</span>
                         </div>
                         <span class="bg-violet-500/20 text-violet-300 border border-violet-500/30 text-xs font-mono font-bold px-2.5 py-1 rounded-xl">
@@ -953,7 +966,7 @@
                         </span>
                     </div>
 
-                    <button onclick="addToCart('${label.replace(/'/g, "\\'")}', ${item.price}, ${item.total})" class="w-full bg-violet-600 hover:bg-violet-500 text-white text-xs font-semibold py-2.5 rounded-xl transition shadow flex items-center justify-center gap-1.5 active:scale-95">
+                    <button onclick="addToCart('${item.label.replace(/'/g, "\\'")}', '${item.fileType}', ${item.price}, ${item.total})" class="w-full bg-violet-600 hover:bg-violet-500 text-white text-xs font-semibold py-2.5 rounded-xl transition shadow flex items-center justify-center gap-1.5 active:scale-95">
                         <i data-lucide="plus-circle" class="w-4 h-4"></i> เพิ่มลงตะกร้า
                     </button>
                 `;
@@ -966,8 +979,8 @@
             renderIcons();
         }
 
-        function addToCart(label, price, maxStock) {
-            let cartItem = salesCart.find(i => i.label === label);
+        function addToCart(label, fileType, price, maxStock) {
+            let cartItem = salesCart.find(i => i.label === label && i.fileType === fileType);
             if (cartItem) {
                 if (cartItem.qty < maxStock) {
                     cartItem.qty++;
@@ -976,17 +989,17 @@
                     return;
                 }
             } else {
-                salesCart.push({ label, price, qty: 1, maxStock });
+                salesCart.push({ label, fileType, price, qty: 1, maxStock });
             }
             renderCart();
         }
 
-        function updateCartQty(label, change) {
-            let cartItem = salesCart.find(i => i.label === label);
+        function updateCartQty(label, fileType, change) {
+            let cartItem = salesCart.find(i => i.label === label && i.fileType === fileType);
             if (cartItem) {
                 cartItem.qty += change;
                 if (cartItem.qty <= 0) {
-                    salesCart = salesCart.filter(i => i.label !== label);
+                    salesCart = salesCart.filter(i => !(i.label === label && i.fileType === fileType));
                 } else if (cartItem.qty > cartItem.maxStock) {
                     cartItem.qty = cartItem.maxStock;
                 }
@@ -1025,13 +1038,13 @@
                 row.className = "flex justify-between items-center bg-slate-950 px-3 py-2.5 rounded-xl border border-slate-800 text-xs";
                 row.innerHTML = `
                     <div class="flex flex-col flex-1 mr-2 truncate">
-                        <span class="text-white font-bold truncate">${item.label}</span>
+                        <span class="text-white font-bold truncate">${item.label} <span class="text-cyan-400">(${item.fileType})</span></span>
                         <span class="text-emerald-400 font-mono">฿${item.price} x ${item.qty}</span>
                     </div>
                     <div class="flex items-center gap-1 shrink-0">
-                        <button onclick="updateCartQty('${item.label.replace(/'/g, "\\'")}', -1)" class="w-6 h-6 bg-slate-800 hover:bg-slate-700 text-white rounded font-bold">-</button>
+                        <button onclick="updateCartQty('${item.label.replace(/'/g, "\\'")}', '${item.fileType}', -1)" class="w-6 h-6 bg-slate-800 hover:bg-slate-700 text-white rounded font-bold">-</button>
                         <span class="w-6 text-center font-mono font-bold text-white">${item.qty}</span>
-                        <button onclick="updateCartQty('${item.label.replace(/'/g, "\\'")}', 1)" class="w-6 h-6 bg-violet-600 hover:bg-violet-500 text-white rounded font-bold">+</button>
+                        <button onclick="updateCartQty('${item.label.replace(/'/g, "\\'")}', '${item.fileType}', 1)" class="w-6 h-6 bg-violet-600 hover:bg-violet-500 text-white rounded font-bold">+</button>
                     </div>
                 `;
                 container.appendChild(row);
@@ -1058,7 +1071,8 @@
 
                     for (let i = pallet.boxes.length - 1; i >= 0; i--) {
                         if (remainingToDeduct <= 0) break;
-                        if (pallet.boxes[i].label === cartItem.label) {
+                        const b = pallet.boxes[i];
+                        if (b.label === cartItem.label && (b.fileType || 'F') === cartItem.fileType) {
                             pallet.boxes.splice(i, 1);
                             remainingToDeduct--;
                         }
@@ -1075,7 +1089,7 @@
         }
 
         // =========================================================
-        // 📊 STOCK CHECK MODAL FUNCTIONS
+        // 📊 STOCK CHECK MODAL FUNCTIONS (F / A Filter Support)
         // =========================================================
         function openStockModal() {
             const modal = document.getElementById('stock-full-modal');
@@ -1097,15 +1111,16 @@
         function filterStock(mode) {
             stockFilterMode = mode;
             const btnAll = document.getElementById('stock-filter-all');
+            const btnF = document.getElementById('stock-filter-F');
+            const btnA = document.getElementById('stock-filter-A');
             const btnLow = document.getElementById('stock-filter-low');
-            const btnIn = document.getElementById('stock-filter-in');
 
-            const activeBtnClass = "flex-1 sm:flex-initial px-3.5 py-2 rounded-xl text-xs font-bold bg-emerald-600 text-white shadow";
-            const inactiveBtnClass = "flex-1 sm:flex-initial px-3.5 py-2 rounded-xl text-xs font-semibold bg-slate-800 text-slate-300 border border-slate-700";
+            const inactiveClass = "px-3 py-2 rounded-xl text-xs font-semibold bg-slate-800 text-slate-300 border border-slate-700 shrink-0";
 
-            btnAll.className = mode === 'all' ? activeBtnClass : inactiveBtnClass;
-            btnLow.className = mode === 'low' ? "flex-1 sm:flex-initial px-3.5 py-2 rounded-xl text-xs font-bold bg-amber-600 text-white shadow" : inactiveBtnClass;
-            btnIn.className = mode === 'in' ? activeBtnClass : inactiveBtnClass;
+            btnAll.className = mode === 'all' ? "px-3 py-2 rounded-xl text-xs font-bold bg-emerald-600 text-white shadow shrink-0" : inactiveClass;
+            btnF.className = mode === 'F' ? "px-3 py-2 rounded-xl text-xs font-bold bg-cyan-600 text-white shadow shrink-0" : inactiveClass;
+            btnA.className = mode === 'A' ? "px-3 py-2 rounded-xl text-xs font-bold bg-amber-600 text-white shadow shrink-0" : inactiveClass;
+            btnLow.className = mode === 'low' ? "px-3 py-2 rounded-xl text-xs font-bold bg-amber-500 text-slate-950 shadow shrink-0" : inactiveClass;
 
             updateStockCheckUI();
         }
@@ -1123,36 +1138,40 @@
                 (pallet.boxes || []).forEach(box => {
                     totalBoxesCount++;
                     const label = box.label || 'ลังไม่ระบุชื่อ';
-                    if (!inventory[label]) {
-                        inventory[label] = { total: 0, palletsMap: {} };
+                    const fileType = box.fileType || 'F';
+                    const key = `${label}_${fileType}`;
+
+                    if (!inventory[key]) {
+                        inventory[key] = { label, fileType, total: 0, palletsMap: {} };
                     }
-                    inventory[label].total++;
-                    inventory[label].palletsMap[pallet.id] = (inventory[label].palletsMap[pallet.id] || 0) + 1;
+                    inventory[key].total++;
+                    inventory[key].palletsMap[pallet.id] = (inventory[key].palletsMap[pallet.id] || 0) + 1;
                 });
             });
 
-            const labels = Object.keys(inventory).sort();
+            const keys = Object.keys(inventory).sort();
             let lowStockCount = 0;
-            labels.forEach(lbl => { if (inventory[lbl].total < 5) lowStockCount++; });
+            keys.forEach(k => { if (inventory[k].total < 5) lowStockCount++; });
 
-            document.getElementById('stat-sku-count').textContent = labels.length;
+            document.getElementById('stat-sku-count').textContent = keys.length;
             document.getElementById('stat-total-boxes').textContent = totalBoxesCount;
             document.getElementById('stat-low-stock').textContent = lowStockCount;
 
             container.innerHTML = '';
 
-            if (labels.length === 0) {
+            if (keys.length === 0) {
                 container.innerHTML = `<div class="p-12 text-center text-slate-500 italic text-sm">ไม่มีรายการสินค้าในคลังขณะนี้</div>`;
                 return;
             }
 
             let matchCount = 0;
-            labels.forEach(label => {
-                const item = inventory[label];
+            keys.forEach(k => {
+                const item = inventory[k];
 
-                if (searchKey && !label.toLowerCase().includes(searchKey)) return;
+                if (searchKey && !item.label.toLowerCase().includes(searchKey)) return;
+                if (stockFilterMode === 'F' && item.fileType !== 'F') return;
+                if (stockFilterMode === 'A' && item.fileType !== 'A') return;
                 if (stockFilterMode === 'low' && item.total >= 5) return;
-                if (stockFilterMode === 'in' && item.total === 0) return;
 
                 matchCount++;
 
@@ -1166,11 +1185,13 @@
 
                 const isLow = item.total < 5;
                 const badgeColor = isLow ? "bg-amber-500/20 text-amber-300 border-amber-500/40" : "bg-emerald-500/20 text-emerald-400 border-emerald-500/40";
+                const typeBadge = item.fileType === 'A' ? "bg-amber-500/20 text-amber-300 border-amber-500/30" : "bg-cyan-500/20 text-cyan-300 border-cyan-500/30";
 
                 card.innerHTML = `
                     <div class="flex flex-col gap-1.5 flex-1">
-                        <div class="flex items-center gap-2.5">
-                            <span class="text-base font-bold text-white">${label}</span>
+                        <div class="flex items-center gap-2.5 flex-wrap">
+                            <span class="text-base font-bold text-white">${item.label}</span>
+                            <span class="${typeBadge} border text-xs font-bold px-2 py-0.5 rounded-lg">ประเภท ${item.fileType}</span>
                             <span class="${badgeColor} border text-xs font-mono font-bold px-2.5 py-0.5 rounded-lg">
                                 ${item.total} ลังคงเหลือ
                             </span>
@@ -1179,13 +1200,13 @@
                     </div>
 
                     <div class="flex items-center justify-between md:justify-end gap-3 w-full md:w-auto border-t md:border-t-0 border-slate-800/80 pt-3 md:pt-0">
-                        <button onclick="highlightAndGo3D('${label.replace(/'/g, "\\'")}')" class="bg-indigo-950/80 hover:bg-indigo-900 text-indigo-300 px-3.5 py-2.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 border border-indigo-700/40 active:scale-95 transition">
+                        <button onclick="highlightAndGo3D('${item.label.replace(/'/g, "\\'")}')" class="bg-indigo-950/80 hover:bg-indigo-900 text-indigo-300 px-3.5 py-2.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 border border-indigo-700/40 active:scale-95 transition">
                             <i data-lucide="eye" class="w-4 h-4"></i> ดูตำแหน่ง 3D
                         </button>
 
                         <div class="flex items-center gap-2">
-                            <button onclick="decrementGlobalStock('${label.replace(/'/g, "\\'")}')" class="bg-slate-800 hover:bg-slate-700 text-slate-200 active:scale-95 w-10 h-10 flex items-center justify-center rounded-xl border border-slate-700 font-extrabold text-lg shadow-md">-</button>
-                            <button onclick="incrementGlobalStock('${label.replace(/'/g, "\\'")}')" class="bg-emerald-600 hover:bg-emerald-500 text-white active:scale-95 w-10 h-10 flex items-center justify-center rounded-xl border border-emerald-500/50 font-extrabold text-lg shadow-md shadow-emerald-600/30">+</button>
+                            <button onclick="decrementGlobalStock('${item.label.replace(/'/g, "\\'")}', '${item.fileType}')" class="bg-slate-800 hover:bg-slate-700 text-slate-200 active:scale-95 w-10 h-10 flex items-center justify-center rounded-xl border border-slate-700 font-extrabold text-lg shadow-md">-</button>
+                            <button onclick="incrementGlobalStock('${item.label.replace(/'/g, "\\'")}', '${item.fileType}')" class="bg-emerald-600 hover:bg-emerald-500 text-white active:scale-95 w-10 h-10 flex items-center justify-center rounded-xl border border-emerald-500/50 font-extrabold text-lg shadow-md shadow-emerald-600/30">+</button>
                         </div>
                     </div>
                 `;
@@ -1199,15 +1220,15 @@
             renderIcons();
         }
 
-        function incrementGlobalStock(label) {
+        function incrementGlobalStock(label, fileType) {
             if (palletsData.length === 0) { alert("กรุณาเพิ่มพาเลทก่อน"); return; }
-            incrementBox(palletsData[0].id, label, 0);
+            incrementBox(palletsData[0].id, label, 0, fileType);
         }
 
-        function decrementGlobalStock(label) {
+        function decrementGlobalStock(label, fileType) {
             for (let p of palletsData) {
-                if (p.boxes && p.boxes.some(b => b.label === label)) {
-                    decrementBox(p.id, label);
+                if (p.boxes && p.boxes.some(b => b.label === label && (b.fileType || 'F') === fileType)) {
+                    decrementBox(p.id, label, undefined, fileType);
                     break;
                 }
             }
@@ -1254,27 +1275,30 @@
                         const code = `${pallet.id}-S${slotIdx + 1}-L${slotCounts[slotIdx] + 1}`;
                         slotCounts[slotIdx]++;
 
-                        let group = groupedBoxes.find(g => g.label === b.label && g.slot === slotIdx);
+                        const fileType = b.fileType || 'F';
+                        let group = groupedBoxes.find(g => g.label === b.label && g.fileType === fileType && g.slot === slotIdx);
                         if (!group) {
-                            group = { label: b.label, slot: slotIdx, count: 0, firstBoxId: b.id, firstCode: code };
+                            group = { label: b.label, fileType, slot: slotIdx, count: 0, firstBoxId: b.id, firstCode: code };
                             groupedBoxes.push(group);
                         }
                         group.count++;
                     });
 
                     boxesHTML = groupedBoxes.map((g) => {
+                        const typeColor = g.fileType === 'A' ? 'text-amber-400 bg-amber-500/10' : 'text-cyan-400 bg-cyan-500/10';
                         return `
                             <div class="flex justify-between items-center bg-slate-900/90 px-3 py-2 rounded-xl border border-slate-800 gap-2">
                                 <div class="truncate mr-1 flex-1">
                                     <div class="flex items-center gap-1.5">
                                         <span class="text-slate-200 font-semibold text-xs truncate block">${g.label}</span>
+                                        <span class="${typeColor} text-[10px] font-bold px-1.5 py-0.2 rounded font-mono">${g.fileType}</span>
                                         <span class="bg-amber-500/20 text-amber-300 text-[10px] font-bold px-1.5 py-0.2 rounded-md font-mono shrink-0">x${g.count}</span>
                                     </div>
                                     <span class="text-[10px] text-cyan-400 font-mono font-medium block mt-0.5">[${g.firstCode}]</span>
                                 </div>
                                 <div class="flex items-center gap-1 shrink-0">
-                                    <button onclick="decrementBox('${pallet.id}', '${g.label.replace(/'/g, "\\'")}', ${g.slot})" class="bg-slate-800 hover:bg-slate-700 text-slate-200 w-7 h-7 flex items-center justify-center rounded-lg border border-slate-700 active:scale-90 font-bold text-sm">-</button>
-                                    <button onclick="incrementBox('${pallet.id}', '${g.label.replace(/'/g, "\\'")}', ${g.slot})" class="bg-indigo-600 hover:bg-indigo-500 text-white w-7 h-7 flex items-center justify-center rounded-lg border border-indigo-500/50 active:scale-90 font-bold text-sm">+</button>
+                                    <button onclick="decrementBox('${pallet.id}', '${g.label.replace(/'/g, "\\'")}', ${g.slot}, '${g.fileType}')" class="bg-slate-800 hover:bg-slate-700 text-slate-200 w-7 h-7 flex items-center justify-center rounded-lg border border-slate-700 active:scale-90 font-bold text-sm">-</button>
+                                    <button onclick="incrementBox('${pallet.id}', '${g.label.replace(/'/g, "\\'")}', ${g.slot}, '${g.fileType}')" class="bg-indigo-600 hover:bg-indigo-500 text-white w-7 h-7 flex items-center justify-center rounded-lg border border-indigo-500/50 active:scale-90 font-bold text-sm">+</button>
                                     <button onclick="moveBoxPrompt('${pallet.id}', '${g.firstBoxId}')" class="bg-indigo-950/60 text-indigo-400 p-1.5 rounded-lg border border-indigo-800/40 active:scale-90 ml-1"><i data-lucide="repeat" class="w-3.5 h-3.5"></i></button>
                                 </div>
                             </div>
@@ -1310,14 +1334,16 @@
             const activeStyle = "py-2.5 rounded-xl text-[11px] font-semibold flex items-center justify-center gap-1 transition bg-indigo-600 text-white shadow";
             const inactiveStyle = "py-2.5 rounded-xl text-[11px] font-semibold flex items-center justify-center gap-1 transition text-slate-400 hover:text-white";
 
-            btnAdd.className = tab === 'add' ? activeStyle : inactiveStyle;
-            btnList.className = tab === 'list' ? activeStyle : inactiveStyle;
-
-            contentAdd.classList.toggle('hidden', tab !== 'add');
-            contentAdd.classList.toggle('flex', tab === 'add');
-
-            contentList.classList.toggle('hidden', tab !== 'list');
-            contentList.classList.toggle('flex', tab === 'list');
+            if(btnAdd && contentAdd) {
+                btnAdd.className = tab === 'add' ? activeStyle : inactiveStyle;
+                contentAdd.classList.toggle('hidden', tab !== 'add');
+                contentAdd.classList.toggle('flex', tab === 'add');
+            }
+            if(btnList && contentList) {
+                btnList.className = tab === 'list' ? activeStyle : inactiveStyle;
+                contentList.classList.toggle('hidden', tab !== 'list');
+                contentList.classList.toggle('flex', tab === 'list');
+            }
         }
 
         function addPallet() {
@@ -1337,6 +1363,7 @@
         function addBox() {
             const palletId = document.getElementById('select-pallet').value;
             const slotIdx = parseInt(document.getElementById('select-slot').value, 10);
+            const fileType = document.getElementById('select-type').value;
             const label = document.getElementById('input-box-label').value.trim();
 
             if (!palletId) { alert("กรุณาเพิ่มพาเลทก่อน"); return; }
@@ -1345,7 +1372,7 @@
             const pallet = palletsData.find(p => p.id === palletId);
             if (pallet) {
                 if (!pallet.boxes) pallet.boxes = [];
-                pallet.boxes.push({ id: 'B_' + Date.now(), label, slot: slotIdx });
+                pallet.boxes.push({ id: 'B_' + Date.now(), label, fileType, slot: slotIdx });
                 document.getElementById('input-box-label').value = '';
                 saveData();
             }
@@ -1400,7 +1427,7 @@
                             const item = document.createElement('div');
                             item.className = "flex justify-between items-center bg-slate-900/90 hover:bg-slate-800 px-3 py-2 rounded-xl text-xs cursor-pointer transition border border-slate-800";
                             item.onclick = () => focusPallet(pallet.id);
-                            item.innerHTML = `<span class="text-amber-300 font-semibold">${box.label} <span class="text-[10px] text-cyan-400 font-mono">[${code.toUpperCase()}]</span></span><i data-lucide="target" class="w-4 h-4 text-indigo-400"></i>`;
+                            item.innerHTML = `<span class="text-amber-300 font-semibold">${box.label} (${box.fileType || 'F'}) <span class="text-[10px] text-cyan-400 font-mono">[${code.toUpperCase()}]</span></span><i data-lucide="target" class="w-4 h-4 text-indigo-400"></i>`;
                             resultsList.appendChild(item);
                         }
                     });
