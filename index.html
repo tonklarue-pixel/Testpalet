@@ -712,6 +712,38 @@
             handleSearch();
         }
 
+        // =========================================================
+        // 🌟 ฟังก์ชันรวมกลุ่มลังชื่อเดียวกัน + เพิ่ม/ลดจำนวน (Quick Increment / Decrement)
+        // =========================================================
+        function incrementBox(palletId, boxLabel, slotIdx) {
+            const pallet = palletsData.find(p => p.id === palletId);
+            if (pallet) {
+                if (!pallet.boxes) pallet.boxes = [];
+                pallet.boxes.push({
+                    id: 'B_' + Date.now() + '_' + Math.random().toString(36).substring(2, 5),
+                    label: boxLabel,
+                    slot: slotIdx !== undefined ? slotIdx : 0
+                });
+                saveData();
+            }
+        }
+
+        function decrementBox(palletId, boxLabel, slotIdx) {
+            const pallet = palletsData.find(p => p.id === palletId);
+            if (pallet && pallet.boxes) {
+                // ลบลังสุดท้ายที่อยู่ในพาเลทนี้ที่มีชื่อและ slot เดียวกันออก 1 ใบ
+                for (let i = pallet.boxes.length - 1; i >= 0; i--) {
+                    const b = pallet.boxes[i];
+                    const bSlot = b.slot !== undefined ? b.slot : 0;
+                    if (b.label === boxLabel && bSlot === slotIdx) {
+                        pallet.boxes.splice(i, 1);
+                        break;
+                    }
+                }
+                saveData();
+            }
+        }
+
         function updateUI() {
             const selectPallet = document.getElementById('select-pallet');
             if (!selectPallet) return;
@@ -731,25 +763,49 @@
                 const card = document.createElement('div');
                 card.className = "bg-slate-900/60 border border-slate-800/80 rounded-2xl p-3 flex flex-col gap-2.5 transition";
 
-                const boxCount = pallet.boxes?.length || 0;
-                let boxesHTML = boxCount === 0 ? `<p class="text-xs text-slate-500 italic py-1">ไม่มีลังในพาเลทนี้</p>` : '';
+                const totalBoxCount = pallet.boxes?.length || 0;
+                let boxesHTML = totalBoxCount === 0 ? `<p class="text-xs text-slate-500 italic py-1">ไม่มีลังในพาเลทนี้</p>` : '';
 
-                if (boxCount > 0) {
+                if (totalBoxCount > 0) {
+                    // จัดกลุ่มลังที่มีชื่อและ Slot เดียวกันไว้ด้วยกัน เพื่อให้กด เพิ่ม/ลด จำนวนได้ง่าย
+                    const groupedBoxes = [];
                     const slotCounts = [0, 0, 0, 0];
-                    boxesHTML = pallet.boxes.map((b) => {
+
+                    pallet.boxes.forEach((b) => {
                         const slotIdx = b.slot !== undefined ? b.slot : 0;
                         const code = `${pallet.id}-S${slotIdx + 1}-L${slotCounts[slotIdx] + 1}`;
                         slotCounts[slotIdx]++;
 
+                        let group = groupedBoxes.find(g => g.label === b.label && g.slot === slotIdx);
+                        if (!group) {
+                            group = {
+                                label: b.label,
+                                slot: slotIdx,
+                                count: 0,
+                                firstBoxId: b.id,
+                                firstCode: code
+                            };
+                            groupedBoxes.push(group);
+                        }
+                        group.count++;
+                    });
+
+                    boxesHTML = groupedBoxes.map((g) => {
                         return `
-                            <div class="flex justify-between items-center bg-slate-900/90 px-3 py-2 rounded-xl border border-slate-800">
-                                <div class="truncate mr-2">
-                                    <span class="text-slate-200 font-semibold text-xs truncate block">${b.label}</span>
-                                    <span class="text-[10px] text-amber-400 font-mono font-medium">[${code}]</span>
+                            <div class="flex justify-between items-center bg-slate-900/90 px-3 py-2 rounded-xl border border-slate-800 gap-2">
+                                <div class="truncate mr-1 flex-1">
+                                    <div class="flex items-center gap-1.5">
+                                        <span class="text-slate-200 font-semibold text-xs truncate block">${g.label}</span>
+                                        <span class="bg-amber-500/20 text-amber-300 text-[10px] font-bold px-1.5 py-0.2 rounded-md font-mono shrink-0">x${g.count}</span>
+                                    </div>
+                                    <span class="text-[10px] text-cyan-400 font-mono font-medium block mt-0.5">[${g.firstCode}]</span>
                                 </div>
-                                <div class="flex items-center gap-1.5 shrink-0">
-                                    <button onclick="moveBoxPrompt('${pallet.id}', '${b.id}')" class="bg-indigo-950/60 text-indigo-400 hover:text-indigo-300 p-2 rounded-lg border border-indigo-800/40 active:scale-90"><i data-lucide="repeat" class="w-4 h-4"></i></button>
-                                    <button onclick="removeBox('${pallet.id}', '${b.id}')" class="bg-rose-950/60 text-rose-400 hover:text-rose-300 p-2 rounded-lg border border-rose-800/40 active:scale-90"><i data-lucide="x" class="w-4 h-4"></i></button>
+                                <div class="flex items-center gap-1 shrink-0">
+                                    <!-- ปุ่มเพิ่ม (+) / ลด (-) จำนวนลัง -->
+                                    <button onclick="decrementBox('${pallet.id}', '${g.label.replace(/'/g, "\\'")}', ${g.slot})" title="ลดจำนวน" class="bg-slate-800 hover:bg-slate-700 text-slate-200 w-7 h-7 flex items-center justify-center rounded-lg border border-slate-700 active:scale-90 font-bold text-sm">-</button>
+                                    <button onclick="incrementBox('${pallet.id}', '${g.label.replace(/'/g, "\\'")}', ${g.slot})" title="เพิ่มจำนวน" class="bg-indigo-600 hover:bg-indigo-500 text-white w-7 h-7 flex items-center justify-center rounded-lg border border-indigo-500/50 active:scale-90 font-bold text-sm">+</button>
+                                    
+                                    <button onclick="moveBoxPrompt('${pallet.id}', '${g.firstBoxId}')" title="ย้ายพาเลท" class="bg-indigo-950/60 text-indigo-400 hover:text-indigo-300 p-1.5 rounded-lg border border-indigo-800/40 active:scale-90 ml-1"><i data-lucide="repeat" class="w-3.5 h-3.5"></i></button>
                                 </div>
                             </div>
                         `;
@@ -760,14 +816,14 @@
                     <div class="flex justify-between items-center border-b border-slate-800/80 pb-2">
                         <div>
                             <h3 class="text-xs font-bold text-slate-100">${pallet.name}</h3>
-                            <p class="text-[10px] text-slate-400 font-medium">${boxCount} ลังเอกสาร</p>
+                            <p class="text-[10px] text-slate-400 font-medium">${totalBoxCount} ลังเอกสาร</p>
                         </div>
                         <div class="flex items-center gap-1">
                             <button onclick="focusPallet('${pallet.id}')" class="p-2 text-slate-400 hover:text-indigo-400 active:scale-90 transition"><i data-lucide="eye" class="w-4.5 h-4.5"></i></button>
                             <button onclick="removePallet('${pallet.id}')" class="p-2 text-slate-400 hover:text-rose-400 active:scale-90 transition"><i data-lucide="trash" class="w-4.5 h-4.5"></i></button>
                         </div>
                     </div>
-                    <div class="flex flex-col gap-2 max-h-36 overflow-y-auto custom-scrollbar pr-0.5">
+                    <div class="flex flex-col gap-2 max-h-44 overflow-y-auto custom-scrollbar pr-0.5">
                         ${boxesHTML}
                     </div>
                 `;
