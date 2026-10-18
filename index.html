@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>3D Warehouse & POS System (Edit Stock Support)</title>
+    <title>3D Warehouse & POS System (POS F/A Filter)</title>
     
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -67,7 +67,7 @@
         </div>
     </div>
 
-    <!-- Custom Modal Dialog (Prompt Add Pallet/Move) -->
+    <!-- Custom Modal Dialog -->
     <div id="custom-modal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md hidden opacity-0 transition-opacity duration-200">
         <div class="clean-glass w-full max-w-sm p-6 rounded-3xl flex flex-col gap-4 border border-indigo-500/30 shadow-2xl scale-95 transition-transform duration-200" id="modal-box">
             <div class="flex items-center gap-3">
@@ -90,7 +90,7 @@
         </div>
     </div>
 
-    <!-- ✏️ EDIT ITEM MODAL DIALOG (เพิ่มใหม่สำหรับแก้ไขสินค้าในสต๊อก) -->
+    <!-- ✏️ EDIT ITEM MODAL DIALOG -->
     <div id="edit-item-modal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md hidden opacity-0 transition-opacity duration-200">
         <div class="clean-glass w-full max-w-sm p-6 rounded-3xl flex flex-col gap-4 border border-amber-500/30 shadow-2xl scale-95 transition-transform duration-200" id="edit-modal-box">
             <div class="flex items-center gap-3 border-b border-slate-800 pb-3">
@@ -195,7 +195,7 @@
                 </div>
                 <div>
                     <h2 class="text-lg font-bold text-white leading-tight">ระบบขายสินค้า (POS & Sales)</h2>
-                    <p class="text-xs text-slate-400">เลือกสินค้าเพื่อขายและตัดสต๊อกออกจากคลังอัตโนมัติ</p>
+                    <p class="text-xs text-slate-400">เลือกสินค้าเพื่อขาย แยกประเภท F / A และตัดสต๊อกอัตโนมัติ</p>
                 </div>
             </div>
 
@@ -207,11 +207,20 @@
 
         <div class="p-4 md:p-6 grid grid-cols-1 lg:grid-cols-12 gap-5 overflow-y-auto custom-scrollbar flex-1 max-w-7xl w-full mx-auto">
             <div class="lg:col-span-7 flex flex-col gap-3">
-                <div class="relative">
-                    <input type="text" id="pos-search-input" placeholder="🔍 ค้นหาสินค้าที่จะขาย..." 
-                        class="w-full bg-slate-900/90 border border-slate-700/80 rounded-2xl px-4 py-3 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-violet-500 transition font-medium">
+                <div class="flex flex-col sm:flex-row gap-2 justify-between items-center bg-slate-900/60 p-3 rounded-2xl border border-slate-800">
+                    <div class="relative w-full sm:w-60">
+                        <input type="text" id="pos-search-input" placeholder="🔍 ค้นหาสินค้าที่จะขาย..." 
+                            class="w-full bg-slate-950 border border-slate-700/80 rounded-xl px-3.5 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-violet-500 transition font-medium">
+                    </div>
+                    <!-- ปุ่มกรอง F และ A ในหน้าขายสินค้า -->
+                    <div class="flex gap-1.5 w-full sm:w-auto overflow-x-auto custom-scrollbar">
+                        <button onclick="filterPOS('all')" id="pos-filter-all" class="px-3 py-2 rounded-xl text-xs font-bold bg-violet-600 text-white shadow shrink-0">ทั้งหมด</button>
+                        <button onclick="filterPOS('F')" id="pos-filter-F" class="px-3 py-2 rounded-xl text-xs font-semibold bg-slate-800 text-cyan-400 border border-slate-700 shrink-0">📁 ประเภท F</button>
+                        <button onclick="filterPOS('A')" id="pos-filter-A" class="px-3 py-2 rounded-xl text-xs font-semibold bg-slate-800 text-amber-400 border border-slate-700 shrink-0">📁 ประเภท A</button>
+                    </div>
                 </div>
-                <div id="pos-catalog-container" class="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-[55vh] overflow-y-auto custom-scrollbar pr-1"></div>
+
+                <div id="pos-catalog-container" class="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-[50vh] overflow-y-auto custom-scrollbar pr-1"></div>
             </div>
 
             <div class="lg:col-span-5 flex flex-col gap-3 bg-slate-900/80 border border-slate-800 p-4 rounded-3xl h-fit">
@@ -404,10 +413,11 @@
         let db = null;
         let isFirebaseLive = false;
         let palletsData = [];
-        let itemPrices = {}; // เก็บราคาสินค้าแต่ละรายการ { "ชื่อ_ประเภท": ราคา }
+        let itemPrices = {}; 
         let highlightedBoxIds = new Set();
         let textureCache = new Map();
         let salesCart = [];
+        let posFilterMode = 'all'; // ตัวแปรเก็บสถานะฟิลเตอร์ในหน้า POS
 
         let scene, camera, renderer, controls, raycaster, mouse;
         let pallet3DGroup = new THREE.Group();
@@ -952,7 +962,7 @@
         }
 
         // =========================================================
-        // ✏️ EDIT ITEM MODAL LOGIC (ระบบแก้ไขข้อมูลสินค้า)
+        // ✏️ EDIT ITEM MODAL LOGIC
         // =========================================================
         function openEditModal(oldLabel, oldType) {
             document.getElementById('edit-old-label').value = oldLabel;
@@ -996,7 +1006,6 @@
                 return;
             }
 
-            // อัปเดตกล่องทั้งหมดในทุกพาเลทที่มีชื่อเดิมและประเภทเดิม
             palletsData.forEach(pallet => {
                 (pallet.boxes || []).forEach(box => {
                     const bType = box.fileType || 'F';
@@ -1007,7 +1016,6 @@
                 });
             });
 
-            // อัปเดตราคาใน itemPrices
             const oldKey = `${oldLabel}_${oldType}`;
             const newKey = `${newLabel}_${newType}`;
             delete itemPrices[oldKey];
@@ -1019,7 +1027,7 @@
         }
 
         // =========================================================
-        // 🛒 POS & SALES SYSTEM LOGIC
+        // 🛒 POS & SALES SYSTEM LOGIC (F / A Filter Support)
         // =========================================================
         function openPOSModal() {
             const modal = document.getElementById('pos-full-modal');
@@ -1036,6 +1044,21 @@
                 modal.classList.add('hidden');
                 modal.classList.remove('flex');
             }, 300);
+        }
+
+        function filterPOS(mode) {
+            posFilterMode = mode;
+            const btnAll = document.getElementById('pos-filter-all');
+            const btnF = document.getElementById('pos-filter-F');
+            const btnA = document.getElementById('pos-filter-A');
+
+            const inactiveClass = "px-3 py-2 rounded-xl text-xs font-semibold bg-slate-800 text-slate-300 border border-slate-700 shrink-0";
+
+            btnAll.className = mode === 'all' ? "px-3 py-2 rounded-xl text-xs font-bold bg-violet-600 text-white shadow shrink-0" : inactiveClass;
+            btnF.className = mode === 'F' ? "px-3 py-2 rounded-xl text-xs font-bold bg-cyan-600 text-white shadow shrink-0" : inactiveClass;
+            btnA.className = mode === 'A' ? "px-3 py-2 rounded-xl text-xs font-bold bg-amber-600 text-white shadow shrink-0" : inactiveClass;
+
+            updatePOSCatalog();
         }
 
         function updatePOSCatalog() {
@@ -1068,6 +1091,8 @@
             keys.forEach(k => {
                 const item = inventory[k];
                 if (searchKey && !item.label.toLowerCase().includes(searchKey)) return;
+                if (posFilterMode === 'F' && item.fileType !== 'F') return;
+                if (posFilterMode === 'A' && item.fileType !== 'A') return;
                 matchCount++;
 
                 const typeBadge = item.fileType === 'A' ? 'bg-amber-500/20 text-amber-300 border-amber-500/30' : 'bg-cyan-500/20 text-cyan-300 border-cyan-500/30';
@@ -1212,7 +1237,7 @@
         }
 
         // =========================================================
-        // 📊 STOCK CHECK MODAL FUNCTIONS (F / A Filter & Edit Support)
+        // 📊 STOCK CHECK MODAL FUNCTIONS
         // =========================================================
         function openStockModal() {
             const modal = document.getElementById('stock-full-modal');
@@ -1504,7 +1529,6 @@
                 if (!pallet.boxes) pallet.boxes = [];
                 pallet.boxes.push({ id: 'B_' + Date.now(), label, fileType, slot: slotIdx });
                 
-                // บันทึกราคา
                 const key = `${label}_${fileType}`;
                 itemPrices[key] = price;
 
