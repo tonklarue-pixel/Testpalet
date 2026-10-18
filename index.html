@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>3D Warehouse (Mobile Easy UI)</title>
+    <title>3D Warehouse & Stock Management System</title>
     
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -21,7 +21,7 @@
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&display=swap');
         * { touch-action: manipulation; box-sizing: border-box; }
         body {
             font-family: 'Prompt', sans-serif;
@@ -38,13 +38,18 @@
             touch-action: none;
         }
         .clean-glass {
-            background: rgba(11, 19, 38, 0.9);
+            background: rgba(11, 19, 38, 0.92);
             backdrop-filter: blur(20px);
             -webkit-backdrop-filter: blur(20px);
             border: 1px solid rgba(255, 255, 255, 0.12);
             box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
         }
-        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+        .stock-modal-bg {
+            background: rgba(7, 13, 27, 0.96);
+            backdrop-filter: blur(25px);
+            -webkit-backdrop-filter: blur(25px);
+        }
+        .custom-scrollbar::-webkit-scrollbar { width: 5px; height: 5px; }
         .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
         .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.2); border-radius: 4px; }
     </style>
@@ -85,7 +90,70 @@
         </div>
     </div>
 
-    <!-- UI Overlay Layer -->
+    <!-- 📊 FULL SCREEN STOCK MANAGEMENT OVERLAY -->
+    <div id="stock-full-modal" class="fixed inset-0 z-40 stock-modal-bg hidden flex-col transition-opacity duration-300 opacity-0 pointer-events-auto overflow-hidden">
+        
+        <!-- Stock Modal Header -->
+        <div class="p-4 md:p-6 border-b border-slate-800/80 flex justify-between items-center bg-slate-900/80 shadow-lg shrink-0">
+            <div class="flex items-center gap-3">
+                <div class="p-3 bg-emerald-600/20 text-emerald-400 rounded-2xl border border-emerald-500/30">
+                    <i data-lucide="clipboard-check" class="w-6 h-6"></i>
+                </div>
+                <div>
+                    <h2 class="text-lg font-bold text-white leading-tight">ระบบตรวจสอบสต๊อกสินค้า</h2>
+                    <p class="text-xs text-slate-400">รายการสต๊อกคงเหลือและตำแหน่งจัดเก็บทั้งหมด</p>
+                </div>
+            </div>
+
+            <button onclick="closeStockModal()" class="bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white p-2.5 rounded-2xl border border-slate-700/80 transition active:scale-90 flex items-center gap-1.5 text-xs font-semibold">
+                <i data-lucide="x" class="w-5 h-5"></i>
+                <span class="hidden sm:inline">ปิดหน้าต่าง</span>
+            </button>
+        </div>
+
+        <!-- Stock Modal Body Container -->
+        <div class="p-4 md:p-6 flex flex-col gap-4 overflow-y-auto custom-scrollbar flex-1 max-w-5xl w-full mx-auto">
+            
+            <!-- Dashboard Stats Summary Cards -->
+            <div class="grid grid-cols-3 gap-3">
+                <div class="bg-slate-900/80 border border-slate-800 p-3.5 rounded-2xl flex flex-col gap-1">
+                    <span class="text-[11px] text-slate-400 font-medium">รายการสินค้า (SKUs)</span>
+                    <span id="stat-sku-count" class="text-xl md:text-2xl font-extrabold text-indigo-400 font-mono">0</span>
+                </div>
+                <div class="bg-slate-900/80 border border-slate-800 p-3.5 rounded-2xl flex flex-col gap-1">
+                    <span class="text-[11px] text-slate-400 font-medium">กล่องรวมทั้งหมด</span>
+                    <span id="stat-total-boxes" class="text-xl md:text-2xl font-extrabold text-emerald-400 font-mono">0</span>
+                </div>
+                <div class="bg-slate-900/80 border border-slate-800 p-3.5 rounded-2xl flex flex-col gap-1">
+                    <span class="text-[11px] text-slate-400 font-medium">สต๊อกต่ำ (&lt;5)</span>
+                    <span id="stat-low-stock" class="text-xl md:text-2xl font-extrabold text-amber-400 font-mono">0</span>
+                </div>
+            </div>
+
+            <!-- Controls: Search and Filter Chips -->
+            <div class="flex flex-col sm:flex-row gap-3 justify-between items-center bg-slate-900/60 p-3 rounded-2xl border border-slate-800">
+                <div class="relative w-full sm:w-80">
+                    <input type="text" id="stock-search-input-full" placeholder="🔍 ค้นชื่อสินค้า / พิกัด..." 
+                        class="w-full bg-slate-950 border border-slate-700/80 rounded-xl px-3.5 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 transition font-medium">
+                </div>
+
+                <div class="flex gap-1.5 w-full sm:w-auto overflow-x-auto custom-scrollbar">
+                    <button onclick="filterStock('all')" id="stock-filter-all" class="flex-1 sm:flex-initial px-3.5 py-2 rounded-xl text-xs font-bold bg-emerald-600 text-white shadow">ทั้งหมด</button>
+                    <button onclick="filterStock('low')" id="stock-filter-low" class="flex-1 sm:flex-initial px-3.5 py-2 rounded-xl text-xs font-semibold bg-slate-800 text-amber-400 border border-slate-700">สต๊อกต่ำ (&lt;5)</button>
+                    <button onclick="filterStock('in')" id="stock-filter-in" class="flex-1 sm:flex-initial px-3.5 py-2 rounded-xl text-xs font-semibold bg-slate-800 text-slate-300 border border-slate-700">มีสินค้า</button>
+                </div>
+            </div>
+
+            <!-- Main Stock Items List -->
+            <div id="stock-full-list-container" class="flex flex-col gap-3 pb-6">
+                <!-- รายการสินค้าจะถูกสร้างที่นี่ -->
+            </div>
+
+        </div>
+
+    </div>
+
+    <!-- UI Overlay Layer (Main Controls) -->
     <div class="relative z-10 p-3 md:p-5 pointer-events-none flex flex-col justify-between h-screen max-w-full">
         
         <!-- Header Controls -->
@@ -114,18 +182,18 @@
         <!-- Mobile Bottom Drawer Panel -->
         <div class="pointer-events-auto w-full max-w-md mx-auto">
             
-            <div class="clean-glass p-4 rounded-3xl shadow-2xl flex flex-col gap-3 max-h-[55vh] md:max-h-[75vh]">
+            <div class="clean-glass p-4 rounded-3xl shadow-2xl flex flex-col gap-3 max-h-[50vh] md:max-h-[75vh]">
                 
-                <!-- Tab Switcher (3 Tabs Mode) -->
+                <!-- Tab Switcher -->
                 <div class="grid grid-cols-3 gap-1 bg-slate-900/80 p-1 rounded-2xl border border-slate-800">
-                    <button id="tab-btn-add" class="py-2 rounded-xl text-[11px] font-semibold flex items-center justify-center gap-1 transition bg-indigo-600 text-white shadow">
-                        <i data-lucide="plus-circle" class="w-3.5 h-3.5"></i> เพิ่มกล่อง
+                    <button id="tab-btn-add" class="py-2.5 rounded-xl text-xs font-semibold flex items-center justify-center gap-1 transition bg-indigo-600 text-white shadow">
+                        <i data-lucide="plus-circle" class="w-4 h-4"></i> เพิ่มกล่อง
                     </button>
-                    <button id="tab-btn-stock" class="py-2 rounded-xl text-[11px] font-semibold flex items-center justify-center gap-1 transition text-slate-400 hover:text-white">
-                        <i data-lucide="clipboard-check" class="w-3.5 h-3.5"></i> เช็คสต๊อก
+                    <button id="tab-btn-stock" onclick="openStockModal()" class="py-2.5 rounded-xl text-xs font-semibold flex items-center justify-center gap-1 transition bg-emerald-600/30 text-emerald-400 hover:bg-emerald-600 hover:text-white shadow">
+                        <i data-lucide="clipboard-check" class="w-4 h-4"></i> เช็คสต๊อก
                     </button>
-                    <button id="tab-btn-list" class="py-2 rounded-xl text-[11px] font-semibold flex items-center justify-center gap-1 transition text-slate-400 hover:text-white">
-                        <i data-lucide="list" class="w-3.5 h-3.5"></i> พิกัดทั้งหมด
+                    <button id="tab-btn-list" class="py-2.5 rounded-xl text-xs font-semibold flex items-center justify-center gap-1 transition text-slate-400 hover:text-white">
+                        <i data-lucide="list" class="w-4 h-4"></i> พิกัดทั้งหมด
                     </button>
                 </div>
 
@@ -173,17 +241,6 @@
                     <button id="btn-add-box" class="w-full bg-indigo-600 hover:bg-indigo-500 active:scale-95 text-white text-xs font-semibold py-3 rounded-2xl flex items-center justify-center gap-2 transition shadow-lg shadow-indigo-600/30">
                         <i data-lucide="plus" class="w-4 h-4"></i> เพิ่มกล่องเข้าพิกัดคลัง
                     </button>
-                </div>
-
-                <!-- TAB 2: Stock Check Mode -->
-                <div id="tab-content-stock" class="flex-col gap-2 overflow-y-auto custom-scrollbar hidden pt-1">
-                    <div class="relative mb-1">
-                        <input type="text" id="stock-search-input" placeholder="🔍 ค้นหาสินค้าในสต๊อก..." 
-                            class="w-full bg-slate-900/90 border border-slate-700/80 rounded-2xl px-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 transition">
-                    </div>
-                    <div id="stock-summary-container" class="flex flex-col gap-2">
-                        <!-- รายการสินค้าและสต๊อกจะแสดงตรงนี้ -->
-                    </div>
                 </div>
 
                 <!-- TAB 3: Coordinates & Pallet List -->
@@ -237,7 +294,7 @@
         let boxMeshMap = new Map();
 
         let currentMode = 'rotate';
-        let activeTab = 'add';
+        let stockFilterMode = 'all';
         let isDragging = false;
         let draggedMesh = null;
         let dragPlane = new THREE.Plane();
@@ -752,24 +809,61 @@
         }
 
         // =========================================================
-        // 📦 ฟังก์ชันโหมดเช็คสต๊อก (Stock Check System)
+        // 📊 FULL SCREEN STOCK MANAGEMENT MODAL FUNCTIONS
         // =========================================================
+        function openStockModal() {
+            const modal = document.getElementById('stock-full-modal');
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+            setTimeout(() => {
+                modal.classList.remove('opacity-0');
+            }, 10);
+            updateStockCheckUI();
+        }
+
+        function closeStockModal() {
+            const modal = document.getElementById('stock-full-modal');
+            modal.classList.add('opacity-0');
+            setTimeout(() => {
+                modal.classList.add('hidden');
+                modal.classList.remove('flex');
+            }, 300);
+        }
+
+        function filterStock(mode) {
+            stockFilterMode = mode;
+            const btnAll = document.getElementById('stock-filter-all');
+            const btnLow = document.getElementById('stock-filter-low');
+            const btnIn = document.getElementById('stock-filter-in');
+
+            const activeBtnClass = "flex-1 sm:flex-initial px-3.5 py-2 rounded-xl text-xs font-bold bg-emerald-600 text-white shadow";
+            const inactiveBtnClass = "flex-1 sm:flex-initial px-3.5 py-2 rounded-xl text-xs font-semibold bg-slate-800 text-slate-300 border border-slate-700";
+
+            btnAll.className = mode === 'all' ? activeBtnClass : inactiveBtnClass;
+            btnLow.className = mode === 'low' ? "flex-1 sm:flex-initial px-3.5 py-2 rounded-xl text-xs font-bold bg-amber-600 text-white shadow" : inactiveBtnClass;
+            btnIn.className = mode === 'in' ? activeBtnClass : inactiveBtnClass;
+
+            updateStockCheckUI();
+        }
+
         function updateStockCheckUI() {
-            const container = document.getElementById('stock-summary-container');
+            const container = document.getElementById('stock-full-list-container');
             if (!container) return;
 
-            const searchKey = document.getElementById('stock-search-input')?.value.trim().toLowerCase() || '';
+            const searchKey = document.getElementById('stock-search-input-full')?.value.trim().toLowerCase() || '';
 
-            // รวบรวมยอดสต๊อกรวมของสินค้าแต่ละชื่อ
+            // รวมสถิติมุมมองคลัง
             const inventory = {};
+            let totalBoxesCount = 0;
 
             palletsData.forEach(pallet => {
                 (pallet.boxes || []).forEach(box => {
+                    totalBoxesCount++;
                     const label = box.label || 'ลังไม่ระบุชื่อ';
                     if (!inventory[label]) {
                         inventory[label] = {
                             total: 0,
-                            palletsMap: {} // { PalletID: Count }
+                            palletsMap: {}
                         };
                     }
                     inventory[label].total++;
@@ -778,44 +872,62 @@
             });
 
             const labels = Object.keys(inventory).sort();
+
+            // อัปเดตสถิติ Header Dashboard
+            let lowStockCount = 0;
+            labels.forEach(lbl => { if (inventory[lbl].total < 5) lowStockCount++; });
+
+            document.getElementById('stat-sku-count').textContent = labels.length;
+            document.getElementById('stat-total-boxes').textContent = totalBoxesCount;
+            document.getElementById('stat-low-stock').textContent = lowStockCount;
+
             container.innerHTML = '';
 
             if (labels.length === 0) {
-                container.innerHTML = `<p class="text-xs text-slate-500 italic py-4 text-center">ไม่มีสินค้าในคลัง</p>`;
+                container.innerHTML = `<div class="p-12 text-center text-slate-500 italic text-sm">ไม่มีรายการสินค้าในคลังขณะนี้</div>`;
                 return;
             }
 
             let matchCount = 0;
             labels.forEach(label => {
+                const item = inventory[label];
+
                 if (searchKey && !label.toLowerCase().includes(searchKey)) return;
+                if (stockFilterMode === 'low' && item.total >= 5) return;
+                if (stockFilterMode === 'in' && item.total === 0) return;
+
                 matchCount++;
 
-                const item = inventory[label];
                 const palletDetails = Object.keys(item.palletsMap).map(pId => {
                     const p = palletsData.find(x => x.id === pId);
-                    return `${p?.name || pId} (${item.palletsMap[pId]})`;
-                }).join(', ');
+                    return `${p?.name || pId} (${item.palletsMap[pId]} ลัง)`;
+                }).join(' • ');
 
                 const card = document.createElement('div');
-                card.className = "bg-slate-900/90 border border-slate-800/90 rounded-2xl p-3 flex justify-between items-center transition hover:border-slate-700";
-                
+                card.className = "bg-slate-900/80 border border-slate-800 rounded-2xl p-4 flex flex-col md:flex-row justify-between items-start md:items-center gap-3 hover:border-slate-700 transition shadow-lg";
+
+                const isLow = item.total < 5;
+                const badgeColor = isLow ? "bg-amber-500/20 text-amber-300 border-amber-500/40" : "bg-emerald-500/20 text-emerald-400 border-emerald-500/40";
+
                 card.innerHTML = `
-                    <div class="flex-1 mr-2 truncate">
-                        <div class="flex items-center gap-2">
-                            <span class="text-xs font-bold text-slate-100 truncate block">${label}</span>
+                    <div class="flex flex-col gap-1.5 flex-1">
+                        <div class="flex items-center gap-2.5">
+                            <span class="text-base font-bold text-white">${label}</span>
+                            <span class="${badgeColor} border text-xs font-mono font-bold px-2.5 py-0.5 rounded-lg">
+                                ${item.total} ลังคงเหลือ
+                            </span>
                         </div>
-                        <p class="text-[10px] text-slate-400 truncate mt-0.5" title="${palletDetails}">📍 ${palletDetails}</p>
+                        <p class="text-xs text-slate-400">📍 สถานที่เก็บ: ${palletDetails}</p>
                     </div>
-                    
-                    <div class="flex items-center gap-2 shrink-0">
-                        <span class="bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-xs font-mono font-bold px-2 py-1 rounded-xl">
-                            ${item.total} ลัง
-                        </span>
-                        
-                        <div class="flex items-center gap-1">
-                            <button onclick="decrementGlobalStock('${label.replace(/'/g, "\\'")}')" title="เบิกออก (-1)" class="bg-slate-800 hover:bg-slate-700 text-slate-200 w-7 h-7 flex items-center justify-center rounded-lg border border-slate-700 active:scale-90 font-bold text-sm">-</button>
-                            <button onclick="incrementGlobalStock('${label.replace(/'/g, "\\'")}')" title="รับเข้า (+1)" class="bg-emerald-600 hover:bg-emerald-500 text-white w-7 h-7 flex items-center justify-center rounded-lg border border-emerald-500/50 active:scale-90 font-bold text-sm">+</button>
-                            <button onclick="highlightStockItems('${label.replace(/'/g, "\\'")}')" title="ส่องพิกัด 3D" class="bg-indigo-950/80 text-indigo-400 p-1.5 rounded-lg border border-indigo-800/40 active:scale-90"><i data-lucide="eye" class="w-4 h-4"></i></button>
+
+                    <div class="flex items-center justify-between md:justify-end gap-3 w-full md:w-auto border-t md:border-t-0 border-slate-800/80 pt-3 md:pt-0">
+                        <button onclick="highlightAndGo3D('${label.replace(/'/g, "\\'")}')" class="bg-indigo-950/80 hover:bg-indigo-900 text-indigo-300 px-3.5 py-2.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 border border-indigo-700/40 active:scale-95 transition">
+                            <i data-lucide="eye" class="w-4 h-4"></i> ดูตำแหน่ง 3D
+                        </button>
+
+                        <div class="flex items-center gap-2">
+                            <button onclick="decrementGlobalStock('${label.replace(/'/g, "\\'")}')" class="bg-slate-800 hover:bg-slate-700 text-slate-200 active:scale-95 w-10 h-10 flex items-center justify-center rounded-xl border border-slate-700 font-extrabold text-lg shadow-md">-</button>
+                            <button onclick="incrementGlobalStock('${label.replace(/'/g, "\\'")}')" class="bg-emerald-600 hover:bg-emerald-500 text-white active:scale-95 w-10 h-10 flex items-center justify-center rounded-xl border border-emerald-500/50 font-extrabold text-lg shadow-md shadow-emerald-600/30">+</button>
                         </div>
                     </div>
                 `;
@@ -823,20 +935,18 @@
             });
 
             if (matchCount === 0) {
-                container.innerHTML = `<p class="text-xs text-slate-500 italic py-3 text-center">ไม่พบรายการสินค้าที่ค้นหา</p>`;
+                container.innerHTML = `<div class="p-10 text-center text-slate-500 italic text-xs">ไม่พบผลการค้นหาตามเงื่อนไขที่ระบุ</div>`;
             }
 
             renderIcons();
         }
 
         function incrementGlobalStock(label) {
-            // เพิ่มสินค้าเข้าพาเลทแรกที่มีอยู่ หรือพาเลทที่มีอยู่
             if (palletsData.length === 0) { alert("กรุณาเพิ่มพาเลทก่อน"); return; }
             incrementBox(palletsData[0].id, label, 0);
         }
 
         function decrementGlobalStock(label) {
-            // ค้นหาพาเลทที่มีสินค้านี้ แล้วลบออก 1 ใบ
             for (let p of palletsData) {
                 if (p.boxes && p.boxes.some(b => b.label === label)) {
                     decrementBox(p.id, label);
@@ -845,7 +955,8 @@
             }
         }
 
-        function highlightStockItems(label) {
+        function highlightAndGo3D(label) {
+            closeStockModal();
             const searchInput = document.getElementById('search-input');
             if (searchInput) {
                 searchInput.value = label;
@@ -941,32 +1052,23 @@
         }
 
         function switchTab(tab) {
-            activeTab = tab;
             const btnAdd = document.getElementById('tab-btn-add');
-            const btnStock = document.getElementById('tab-btn-stock');
             const btnList = document.getElementById('tab-btn-list');
 
             const contentAdd = document.getElementById('tab-content-add');
-            const contentStock = document.getElementById('tab-content-stock');
             const contentList = document.getElementById('tab-content-list');
 
-            const activeStyle = "py-2 rounded-xl text-[11px] font-semibold flex items-center justify-center gap-1 transition bg-indigo-600 text-white shadow";
-            const inactiveStyle = "py-2 rounded-xl text-[11px] font-semibold flex items-center justify-center gap-1 transition text-slate-400 hover:text-white";
+            const activeStyle = "py-2.5 rounded-xl text-xs font-semibold flex items-center justify-center gap-1 transition bg-indigo-600 text-white shadow";
+            const inactiveStyle = "py-2.5 rounded-xl text-xs font-semibold flex items-center justify-center gap-1 transition text-slate-400 hover:text-white";
 
             btnAdd.className = tab === 'add' ? activeStyle : inactiveStyle;
-            btnStock.className = tab === 'stock' ? activeStyle : inactiveStyle;
             btnList.className = tab === 'list' ? activeStyle : inactiveStyle;
 
             contentAdd.classList.toggle('hidden', tab !== 'add');
             contentAdd.classList.toggle('flex', tab === 'add');
 
-            contentStock.classList.toggle('hidden', tab !== 'stock');
-            contentStock.classList.toggle('flex', tab === 'stock');
-
             contentList.classList.toggle('hidden', tab !== 'list');
             contentList.classList.toggle('flex', tab === 'list');
-
-            if (tab === 'stock') updateStockCheckUI();
         }
 
         function addPallet() {
@@ -1117,7 +1219,6 @@
             initFirebase();
 
             document.getElementById('tab-btn-add').addEventListener('click', () => switchTab('add'));
-            document.getElementById('tab-btn-stock').addEventListener('click', () => switchTab('stock'));
             document.getElementById('tab-btn-list').addEventListener('click', () => switchTab('list'));
 
             document.getElementById('btn-mode-rotate').addEventListener('click', () => setMode('rotate'));
@@ -1131,7 +1232,7 @@
             searchClear.addEventListener('click', () => { searchInput.value = ''; handleSearch(); });
             searchInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') addBox(); });
 
-            document.getElementById('stock-search-input')?.addEventListener('input', updateStockCheckUI);
+            document.getElementById('stock-search-input-full')?.addEventListener('input', updateStockCheckUI);
 
             document.getElementById('btn-export').addEventListener('click', exportJSON);
             document.getElementById('btn-import-trigger').addEventListener('click', () => document.getElementById('file-import').click());
